@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useRouter } from 'next/navigation'
@@ -24,9 +25,10 @@ export function MessageForm({ todoId }: { todoId: string }) {
 
       if (response.ok) {
         setContent('')
+        toast.success('Message sent successfully')
         router.refresh()
       } else {
-        console.error('Failed to send message')
+        toast.error('Failed to send message')
       }
     } catch (error) {
       console.error('Error sending message:', error)

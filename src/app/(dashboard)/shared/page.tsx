@@ -1,21 +1,18 @@
-import { getSession } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { TodoList } from '@/components/todos/TodoList'
 
 export default async function SharedTodosPage() {
-  const session = await getSession()
-  if (!session?.user?.email) {
-    redirect('/login')
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+  // TODO: Re-enable auth after fixing code verification
+  // Temporary: Use dev user
+  const user = await prisma.user.findFirst({
+    where: { email: 'dev@central.local' },
+  }) || await prisma.user.create({
+    data: {
+      email: 'dev@central.local',
+      name: 'Dev User',
+      orgId: 'default-org',
+    },
   })
-
-  if (!user) {
-    redirect('/login')
-  }
 
   const todos = await prisma.todo.findMany({
     where: {

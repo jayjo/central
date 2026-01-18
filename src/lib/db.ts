@@ -31,5 +31,9 @@ export async function getTodayMessage() {
     },
   })
 
-  return message?.message || null
+  return message ? {
+    message: message.message,
+    author: message.author,
+    category: message.category,
+  } : null
 }

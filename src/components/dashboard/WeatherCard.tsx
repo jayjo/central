@@ -27,6 +27,7 @@ export function WeatherCard({ zipCode }: { zipCode?: string | null }) {
       .then((res) => res.json())
       .then((data) => {
         if (data.error) {
+          console.error('Weather API error:', data.error)
           setError(data.error)
         } else {
           setWeather(data)
@@ -34,7 +35,7 @@ export function WeatherCard({ zipCode }: { zipCode?: string | null }) {
       })
       .catch((err) => {
         console.error('Weather fetch error:', err)
-        setError('Failed to load weather')
+        setError(err.message || 'Failed to load weather')
       })
       .finally(() => setLoading(false))
   }, [zipCode])
@@ -97,6 +98,10 @@ export function WeatherCard({ zipCode }: { zipCode?: string | null }) {
               src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`}
               alt={weather.condition}
               className="w-16 h-16"
+              onError={(e) => {
+                // Hide icon if it fails to load
+                e.currentTarget.style.display = 'none'
+              }}
             />
           )}
           <div>

@@ -102,6 +102,8 @@ model Message {
 model MotivationalMessage {
   id        String   @id @default(cuid())
   message   String
+  author    String?
+  category  String?
   date      DateTime @unique
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
