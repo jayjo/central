@@ -74,7 +74,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Main Content - Calendar */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 bg-[#f8f8f8]">
         <TodoCalendar todos={todos} currentUserId={user.id} />
       </div>
     </div>

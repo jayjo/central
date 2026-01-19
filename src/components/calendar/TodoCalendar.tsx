@@ -103,12 +103,12 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
           </h2>
           <div className="flex gap-1 border rounded-md">
             <Button
-              variant={viewMode === 'day' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('day')}
-              className="rounded-r-none"
-            >
-              Day
+                variant={viewMode === 'month' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('month')}
+                className="rounded-r-none"
+                >
+                Month
             </Button>
             <Button
               variant={viewMode === 'week' ? 'default' : 'ghost'}
@@ -119,12 +119,12 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
               Week
             </Button>
             <Button
-              variant={viewMode === 'month' ? 'default' : 'ghost'}
+              variant={viewMode === 'day' ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => setViewMode('month')}
+              onClick={() => setViewMode('day')}
               className="rounded-l-none"
             >
-              Month
+              Day
             </Button>
           </div>
         </div>
@@ -144,9 +144,6 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
           <Card className="h-full">
             <CardContent className="p-6">
               <div className="mb-4">
-                <h3 className="text-lg font-semibold mb-4">
-                  {format(currentDate, 'EEEE, MMMM d, yyyy')}
-                </h3>
                 {getTodosForDate(currentDate).length === 0 ? (
                   <p className="text-sm text-muted-foreground">No todos scheduled for this day</p>
                 ) : (
@@ -154,7 +151,7 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
                     {getTodosForDate(currentDate).map((todo) => (
                       <div
                         key={todo.id}
-                        className="flex items-center gap-2 p-3 rounded-md border hover:bg-accent transition-colors"
+                        className="flex items-start gap-2 p-3 rounded-md border hover:bg-accent transition-colors"
                       >
                         <TodoCheckbox
                           todoId={todo.id}
@@ -187,35 +184,37 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
           </Card>
         </div>
       ) : viewMode === 'week' ? (
-        <div className="flex-1 grid grid-cols-7 gap-2">
-          {/* Day headers */}
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="text-center font-semibold text-sm text-muted-foreground py-2">
-              {day}
-            </div>
-          ))}
+        <div className="flex-1 flex flex-col">
+          <div className="grid grid-cols-7 gap-2 mb-2">
+            {/* Day headers */}
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <div key={day} className="text-center font-semibold text-sm text-muted-foreground py-2">
+                {day}
+              </div>
+            ))}
+          </div>
+          <div className="flex-1 grid grid-cols-7 gap-2">
+            {/* Week days */}
+            {daysInWeek.map((day) => {
+              const dayTodos = getTodosForDate(day)
+              const isToday = isSameDay(day, new Date())
 
-          {/* Week days */}
-          {daysInWeek.map((day) => {
-            const dayTodos = getTodosForDate(day)
-            const isToday = isSameDay(day, new Date())
-
-            return (
-              <Card
-                key={day.toISOString()}
-                className={`min-h-[200px] p-2 ${
-                  isToday ? 'border-2 border-primary' : ''
-                }`}
-              >
-                <CardContent className="p-0">
-                  <div className={`text-sm font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
+              return (
+                <Card
+                  key={day.toISOString()}
+                  className={`h-full p-2 overflow-hidden relative ${
+                    isToday ? 'border-2 border-primary' : ''
+                  }`}
+                >
+                  <div className={`text-sm font-medium absolute top-2 left-2 z-10 ${isToday ? 'text-primary' : ''}`}>
                     {format(day, 'd')}
                   </div>
-                  <div className="space-y-1">
+                  <CardContent className="p-0 overflow-hidden flex flex-col h-full items-start">
+                    <div className="space-y-1 overflow-hidden pt-5">
                     {dayTodos.slice(0, 5).map((todo) => (
                       <div
                         key={todo.id}
-                        className="flex items-center gap-1 text-xs p-1 rounded bg-accent hover:bg-accent/80 transition-colors group"
+                        className="flex items-start gap-1 text-xs p-1 rounded bg-accent hover:bg-accent/80 transition-colors group overflow-hidden"
                       >
                         <TodoCheckbox
                           todoId={todo.id}
@@ -225,11 +224,11 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
                         />
                         <Link
                           href={`/todos/${todo.id}`}
-                          className="flex-1 truncate min-w-0"
+                          className="flex-1 min-w-0 break-words"
                           title={todo.title}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <span className={todo.status === 'COMPLETED' ? 'line-through opacity-60' : ''}>
+                          <span className={`${todo.status === 'COMPLETED' ? 'line-through opacity-60' : ''} break-words`}>
                             {todo.title}
                           </span>
                         </Link>
@@ -245,6 +244,7 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
               </Card>
             )
           })}
+          </div>
         </div>
       ) : (
         <div className="flex-1 grid grid-cols-7 gap-2">
@@ -264,22 +264,22 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
             return (
               <Card
                 key={day.toISOString()}
-                className={`min-h-[100px] p-2 ${
+                className={`min-h-[100px] p-2 overflow-hidden relative items-start ${
                   isToday ? 'border-2 border-primary' : ''
                 } ${!isCurrentMonth ? 'opacity-50 bg-muted/30' : ''}`}
               >
-                <CardContent className="p-0">
-                  <div className={`text-sm font-medium mb-1 ${
-                    isToday ? 'text-primary' : !isCurrentMonth ? 'text-muted-foreground' : ''
-                  }`}>
-                    {format(day, 'd')}
-                  </div>
+                <div className={`text-sm font-medium absolute top-2 left-2 z-10 ${
+                  isToday ? 'text-primary' : !isCurrentMonth ? 'text-muted-foreground' : ''
+                }`}>
+                  {format(day, 'd')}
+                </div>
+                <CardContent className="p-0 overflow-hidden flex flex-col items-start">
                   {isCurrentMonth && (
-                    <div className="space-y-1">
+                    <div className="space-y-1 overflow-hidden pt-5">
                       {dayTodos.slice(0, 3).map((todo) => (
                         <div
                           key={todo.id}
-                          className="flex items-center gap-1 text-xs p-1 rounded bg-accent hover:bg-accent/80 transition-colors group"
+                          className="flex items-start gap-1 text-xs p-1 rounded bg-accent hover:bg-accent/80 transition-colors group overflow-hidden"
                         >
                           <TodoCheckbox
                             todoId={todo.id}
@@ -289,11 +289,11 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
                           />
                           <Link
                             href={`/todos/${todo.id}`}
-                            className="flex-1 truncate min-w-0"
+                            className="flex-1 min-w-0 break-words"
                             title={todo.title}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <span className={todo.status === 'COMPLETED' ? 'line-through opacity-60' : ''}>
+                            <span className={`${todo.status === 'COMPLETED' ? 'line-through opacity-60' : ''} break-words`}>
                               {todo.title}
                             </span>
                           </Link>

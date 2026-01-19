@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation'
 import { X, Plus, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatDate } from '@/lib/utils'
+import { formatDate, getDateHeader } from '@/lib/utils'
 import { TodoCheckbox } from '@/components/todos/TodoCheckbox'
 import { Kbd } from '@/components/ui/kbd'
 import { useQuickLauncher } from '@/components/quick-launcher/QuickLauncherProvider'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Todo {
   id: string
@@ -56,6 +57,14 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId }: { todos: To
       localStorage.setItem('todosMenuPosition', JSON.stringify({ position, size }))
     }
   }, [position, size, isOpen])
+
+  useEffect(() => {
+    if (isOpen) {
+      window.dispatchEvent(new CustomEvent('todosMenuOpen'))
+    } else {
+      window.dispatchEvent(new CustomEvent('todosMenuClose'))
+    }
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) return
@@ -127,6 +136,47 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId }: { todos: To
     quickLauncher.open()
   }
 
+  // Organize todos by date headers
+  const organizeTodosByDate = () => {
+    const organized: { [key: string]: Todo[] } = {}
+    
+    // Sort todos: those with due dates first (soonest first), then those without
+    const sortedTodos = [...todos].sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return 0
+      if (!a.dueDate) return 1 // No due date goes to end
+      if (!b.dueDate) return -1
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+    })
+    
+    sortedTodos.forEach((todo) => {
+      const header = getDateHeader(todo.dueDate ? new Date(todo.dueDate) : null)
+      if (!organized[header]) {
+        organized[header] = []
+      }
+      organized[header].push(todo)
+    })
+
+    // Sort headers: Today, Tomorrow, then by date
+    const headerOrder = ['Today', 'Tomorrow', 'Yesterday']
+    const sortedHeaders = Object.keys(organized).sort((a, b) => {
+      const aIndex = headerOrder.indexOf(a)
+      const bIndex = headerOrder.indexOf(b)
+      
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+      if (aIndex !== -1) return -1
+      if (bIndex !== -1) return 1
+      
+      if (a === 'No Due Date') return 1
+      if (b === 'No Due Date') return -1
+      
+      return a.localeCompare(b)
+    })
+
+    return sortedHeaders.map(header => ({ header, todos: organized[header] }))
+  }
+
+  const organizedTodos = organizeTodosByDate()
+
   return (
     <>
       {/* Floating Menu */}
@@ -148,7 +198,7 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId }: { todos: To
         >
           <div className="flex items-center gap-2">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Recent Todos</h2>
+            <h2 className="text-lg font-semibold">Todos</h2>
           </div>
           <Button
             variant="ghost"
@@ -160,62 +210,87 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId }: { todos: To
           </Button>
         </div>
         
-        <div className="p-4 border-b">
-          <Button onClick={handleNewTodo} className="w-full">
-            <Plus className="mr-2 h-4 w-4" />
-            New Todo
-            <span className="ml-auto">
-              <Kbd className="ml-2">
-                <span>⌘</span>
-                <span>K</span>
-              </Kbd>
-            </span>
-          </Button>
-        </div>
+        <TooltipProvider>
+          <div className="p-4 border-b">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={handleNewTodo} className="w-full">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Todo
+                  <span className="ml-auto">
+                    <Kbd className="ml-2">
+                      <span>Tab</span>
+                      <span>N</span>
+                    </Kbd>
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="flex items-center gap-2">
+                  <span>Create new todo</span>
+                  <Kbd>
+                    <span>Tab</span>
+                    <span>N</span>
+                  </Kbd>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
         
-        <div className="flex-1 overflow-y-auto p-4 space-y-2" style={{ minHeight: 0 }}>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ minHeight: 0 }}>
           {todos.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               No todos yet
             </p>
           ) : (
-            todos.map((todo) => (
-              <Card key={todo.id} className="hover:bg-accent transition-colors">
-                <CardContent className="p-3">
-                  <div className="flex items-start gap-2">
-                    <div className="pt-0.5">
-                      <TodoCheckbox
-                        todoId={todo.id}
-                        currentStatus={todo.status as 'OPEN' | 'COMPLETED'}
-                        isOwner={todo.ownerId === currentUserId}
-                        size="md"
-                        onToggle={() => {
-                          router.refresh()
-                        }}
-                      />
-                    </div>
-                    <Link
-                      href={`/todos/${todo.id}`}
-                      onClick={onClose}
-                      className="flex-1 min-w-0"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className={`font-medium text-sm truncate ${todo.status === 'COMPLETED' ? 'line-through opacity-60' : ''}`}>
-                            {todo.title}
-                          </h3>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatDate(todo.updatedAt)}
-                            {todo._count.messages > 0 && (
-                              <> • {todo._count.messages} message(s)</>
-                            )}
-                          </p>
+            organizedTodos.map(({ header, todos: headerTodos }) => (
+              <div key={header} className="space-y-2">
+                <div className="sticky top-0 bg-background z-10 py-1">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {header}
+                  </h3>
+                </div>
+                {headerTodos.map((todo) => (
+                  <Card key={todo.id} className="hover:bg-accent transition-colors">
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-2">
+                        <div className="pt-0.5">
+                          <TodoCheckbox
+                            todoId={todo.id}
+                            currentStatus={todo.status as 'OPEN' | 'COMPLETED'}
+                            isOwner={todo.ownerId === currentUserId}
+                            size="md"
+                            onToggle={() => {
+                              router.refresh()
+                            }}
+                          />
                         </div>
+                        <Link
+                          href={`/todos/${todo.id}`}
+                          onClick={onClose}
+                          className="flex-1 min-w-0"
+                          data-no-warn="true"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className={`font-medium text-sm truncate ${todo.status === 'COMPLETED' ? 'line-through opacity-60' : ''}`}>
+                                {todo.title}
+                              </h3>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {todo.dueDate ? formatDate(new Date(todo.dueDate)) : formatDate(todo.updatedAt)}
+                                {todo._count.messages > 0 && (
+                                  <> • {todo._count.messages} message(s)</>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
                       </div>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             ))
           )}
         </div>

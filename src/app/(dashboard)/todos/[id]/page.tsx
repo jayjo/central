@@ -4,6 +4,7 @@ import { formatDate, formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { MessageForm } from '@/components/todos/MessageForm'
 import { TodoStatusButton } from '@/components/todos/TodoStatusButton'
+import { EditTodoButton } from '@/components/todos/EditTodoButton'
 
 export default async function TodoDetailPage({
   params,
@@ -105,24 +106,29 @@ export default async function TodoDetailPage({
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Details</CardTitle>
-            <div className="flex gap-2">
+      {isOwner ? (
+        <EditTodoButton 
+          todo={{
+            id: todo.id,
+            title: todo.title,
+            priority: todo.priority,
+            dueDate: todo.dueDate ? new Date(todo.dueDate).toISOString() : null,
+            visibility: todo.visibility,
+            status: todo.status,
+          }} 
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Details</CardTitle>
               <TodoStatusButton
                 todoId={todo.id}
                 currentStatus={todo.status}
                 isOwner={isOwner}
               />
-              {isOwner && (
-                <Button variant="outline" size="sm">
-                  Edit
-                </Button>
-              )}
             </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <span className="text-sm font-medium">Status: </span>
@@ -156,6 +162,7 @@ export default async function TodoDetailPage({
           )}
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>

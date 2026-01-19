@@ -3,6 +3,8 @@ import { TodoList } from '@/components/todos/TodoList'
 import { CreateTodoForm } from '@/components/todos/CreateTodoForm'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Kbd } from '@/components/ui/kbd'
 
 export default async function MyTodosPage({
   searchParams,
@@ -60,18 +62,33 @@ export default async function MyTodosPage({
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">My Todos</h1>
         {!searchParams.new && (
-          <a href="/my-todos?new=true">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Todo
-              <span className="ml-2">
-                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                  <span>⌘</span>
-                  <span>K</span>
-                </kbd>
-              </span>
-            </Button>
-          </a>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a href="/my-todos?new=true">
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Todo
+                    <span className="ml-2">
+                      <Kbd>
+                        <span>Tab</span>
+                        <span>N</span>
+                      </Kbd>
+                    </span>
+                  </Button>
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="flex items-center gap-2">
+                  <span>Create new todo</span>
+                  <Kbd>
+                    <span>Tab</span>
+                    <span>N</span>
+                  </Kbd>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
 

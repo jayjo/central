@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,17 @@ export function SettingsForm({ user }: { user: User }) {
   const [name, setName] = useState(user.name || '')
   const [zipCode, setZipCode] = useState(user.zipCode || '')
   const [loading, setLoading] = useState(false)
+  const [profileSaved, setProfileSaved] = useState(true)
+  const [locationSaved, setLocationSaved] = useState(true)
+  
+  const hasProfileChanges = name !== (user.name || '')
+  const hasLocationChanges = zipCode !== (user.zipCode || '')
+  
+  // Warn before navigation if there are unsaved changes
+  useUnsavedChanges({
+    hasUnsavedChanges: (hasProfileChanges && !profileSaved) || (hasLocationChanges && !locationSaved),
+    message: 'You have unsaved changes. Are you sure you want to leave?',
+  })
 
   async function handleProfileSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -37,6 +49,7 @@ export function SettingsForm({ user }: { user: User }) {
       }
 
       toast.success('Profile updated successfully')
+      setProfileSaved(true)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || 'Failed to update profile')
@@ -61,6 +74,7 @@ export function SettingsForm({ user }: { user: User }) {
       }
 
       toast.success('Location updated successfully')
+      setLocationSaved(true)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || 'Failed to update location')
@@ -95,7 +109,10 @@ export function SettingsForm({ user }: { user: User }) {
                   id="name"
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    setProfileSaved(false)
+                  }}
                 />
               </div>
               <Button type="submit" disabled={loading}>
@@ -119,7 +136,10 @@ export function SettingsForm({ user }: { user: User }) {
                   id="zipCode"
                   type="text"
                   value={zipCode}
-                  onChange={(e) => setZipCode(e.target.value)}
+                  onChange={(e) => {
+                    setZipCode(e.target.value)
+                    setLocationSaved(false)
+                  }}
                   placeholder="12345"
                 />
               </div>

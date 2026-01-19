@@ -34,7 +34,7 @@ export default async function DashboardLayout({
     },
   }
 
-  // Get recent todos for the sidebar menu
+  // Get recent todos for the sidebar menu, ordered by due date (soonest first)
   const recentTodos = await prisma.todo.findMany({
     where: {
       OR: [
@@ -42,8 +42,11 @@ export default async function DashboardLayout({
         { sharedWith: { some: { id: devUser.id } } },
       ],
     },
-    orderBy: { updatedAt: 'desc' },
-    take: 10,
+    orderBy: [
+      { dueDate: 'asc' },
+      { updatedAt: 'desc' },
+    ],
+    take: 20,
     select: {
       id: true,
       title: true,
