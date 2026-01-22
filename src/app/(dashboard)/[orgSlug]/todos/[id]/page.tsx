@@ -1,32 +1,45 @@
-import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
+import { getOrgIdFromSlug } from '@/lib/routing'
+import { redirect } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatDate, formatDateTime } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { MessageForm } from '@/components/todos/MessageForm'
+import { TodoStatusButton } from '@/components/todos/TodoStatusButton'
+import { EditTodoButton } from '@/components/todos/EditTodoButton'
 
-export default async function TodoDetailPage({
+// Helper function to get local date string in YYYY-MM-DD format
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export default async function OrgSlugTodoDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: { orgSlug: string; id: string }
 }) {
+  // Resolve org slug to org ID
+  const orgId = await getOrgIdFromSlug(params.orgSlug)
+  
+  if (!orgId) {
+    // If org slug doesn't exist, redirect to regular todo route
+    redirect(`/todos/${params.id}`)
+  }
+
   // TODO: Re-enable auth after fixing code verification
   // Temporary: Use dev user
   const user = await prisma.user.findFirst({
     where: { email: 'dev@central.local' },
-    include: { org: true },
   }) || await prisma.user.create({
     data: {
       email: 'dev@central.local',
       name: 'Dev User',
       orgId: 'default-org',
     },
-    include: { org: true },
   })
-
-  // If user has an org slug, redirect to org-scoped route
-  if (user.org?.slug) {
-    redirect(`/${user.org.slug}/todos/${params.id}`)
-  }
-
-  // If no org slug, redirect to settings
-  redirect('/settings')
   
   const session = {
     user: {
@@ -44,6 +57,7 @@ export default async function TodoDetailPage({
           id: true,
           name: true,
           email: true,
+          orgId: true,
         },
       },
       sharedWith: {
@@ -74,6 +88,15 @@ export default async function TodoDetailPage({
     return (
       <div className="p-6">
         <h1 className="text-2xl font-bold">Todo not found</h1>
+      </div>
+    )
+  }
+
+  // Verify the todo belongs to the org specified in the URL
+  if (todo.owner.orgId !== orgId) {
+    return (
+      <div className="p-6">
+        <h1 className="text-2xl font-bold">Todo not found in this organization</h1>
       </div>
     )
   }
@@ -111,13 +134,25 @@ export default async function TodoDetailPage({
         </div>
       </div>
 
+      {todo.description && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Description</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm whitespace-pre-wrap">{todo.description}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {isOwner ? (
         <EditTodoButton 
           todo={{
             id: todo.id,
             title: todo.title,
+            description: todo.description,
             priority: todo.priority,
-            dueDate: todo.dueDate ? new Date(todo.dueDate).toISOString() : null,
+            dueDate: todo.dueDate ? getLocalDateString(new Date(todo.dueDate)) : null,
             visibility: todo.visibility,
             status: todo.status,
           }} 

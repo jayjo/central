@@ -27,9 +27,7 @@ export function useQuickLauncher() {
 
 export function QuickLauncherProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
-  const [tabPressed, setTabPressed] = useState(false)
   const [todosMenuOpen, setTodosMenuOpen] = useState(false)
-  const tabTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Listen for todos menu state changes
   useEffect(() => {
@@ -46,84 +44,45 @@ export function QuickLauncherProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+K or Ctrl+K - keep for quick launcher
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !e.altKey && !e.optionKey) {
-        e.preventDefault()
-        setIsOpen((prev) => !prev)
-        setTabPressed(false)
+      // Don't trigger shortcuts when typing in inputs, textareas, or contenteditable
+      const target = e.target as HTMLElement
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
         return
       }
 
-      // Tab key - start sequence
-      if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      const key = e.key.toLowerCase()
+
+      // N: New todo (quick launcher)
+      if (key === 'n' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
         e.preventDefault()
-        setTabPressed(true)
-        
-        // Clear existing timeout
-        if (tabTimeoutRef.current) {
-          clearTimeout(tabTimeoutRef.current)
-        }
-        
-        // Reset after 1 second if no follow-up key
-        tabTimeoutRef.current = setTimeout(() => {
-          setTabPressed(false)
-        }, 1000)
+        setIsOpen(true)
         return
       }
 
-      // If Tab was pressed, handle follow-up keys
-      if (tabPressed) {
-        const key = e.key.toLowerCase()
-        
-        // Tab+T: Open todos menu
-        if (key === 't' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-          e.preventDefault()
-          setTabPressed(false)
-          if (tabTimeoutRef.current) {
-            clearTimeout(tabTimeoutRef.current)
-          }
-          window.dispatchEvent(new CustomEvent('openTodosMenu'))
-          return
-        }
-        
-        // Tab+C: Go to calendar
-        if (key === 'c' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-          e.preventDefault()
-          setTabPressed(false)
-          if (tabTimeoutRef.current) {
-            clearTimeout(tabTimeoutRef.current)
-          }
-          window.location.href = '/'
-          return
-        }
-        
-        // Tab+N: New todo (only when todos menu is open)
-        if (key === 'n' && !e.metaKey && !e.ctrlKey && !e.altKey && todosMenuOpen) {
-          e.preventDefault()
-          setTabPressed(false)
-          if (tabTimeoutRef.current) {
-            clearTimeout(tabTimeoutRef.current)
-          }
-          setIsOpen(true)
-          return
-        }
-        
-        // Any other key resets the sequence
-        setTabPressed(false)
-        if (tabTimeoutRef.current) {
-          clearTimeout(tabTimeoutRef.current)
-        }
+      // T: Open todos menu
+      if (key === 't' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        window.dispatchEvent(new CustomEvent('openTodosMenu'))
+        return
+      }
+
+      // C: Go to calendar
+      if (key === 'c' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        window.location.href = '/'
+        return
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      if (tabTimeoutRef.current) {
-        clearTimeout(tabTimeoutRef.current)
-      }
     }
-  }, [tabPressed, todosMenuOpen])
+  }, [])
 
   return (
     <QuickLauncherContext.Provider

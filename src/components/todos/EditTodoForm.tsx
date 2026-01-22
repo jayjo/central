@@ -7,6 +7,7 @@ import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -20,6 +21,7 @@ interface EditTodoFormProps {
   todo: {
     id: string
     title: string
+    description: string | null
     priority: string | null
     dueDate: string | null
     visibility: string
@@ -53,6 +55,7 @@ function getLocalDateString(dateString: string | null): string {
 export function EditTodoForm({ todo, onCancel, onSuccess }: EditTodoFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState(todo.title)
+  const [description, setDescription] = useState(todo.description || '')
   const [priority, setPriority] = useState<string>(todo.priority || '')
   const [dueDate, setDueDate] = useState(getLocalDateString(todo.dueDate))
   const [visibility, setVisibility] = useState<string>(todo.visibility)
@@ -61,6 +64,7 @@ export function EditTodoForm({ todo, onCancel, onSuccess }: EditTodoFormProps) {
   // Track if form has been modified
   const hasChanges = 
     title !== todo.title ||
+    description !== (todo.description || '') ||
     priority !== (todo.priority || '') ||
     dueDate !== getLocalDateString(todo.dueDate) ||
     visibility !== todo.visibility
@@ -95,17 +99,41 @@ export function EditTodoForm({ todo, onCancel, onSuccess }: EditTodoFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
+          description: description ? description.trim() : null,
           priority: priority || null,
           dueDate: dueDate || null,
           visibility: visibility || 'PRIVATE',
         }),
       })
 
+      // Read response text once
+      const responseText = await response.text()
+      
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to update todo')
+        let errorMessage = 'Failed to update todo'
+        if (responseText) {
+          try {
+            const data = JSON.parse(responseText)
+            errorMessage = data.error || errorMessage
+          } catch {
+            errorMessage = response.statusText || errorMessage
+          }
+        } else {
+          errorMessage = response.statusText || errorMessage
+        }
+        throw new Error(errorMessage)
       }
 
+      // Parse response if it has content
+      if (responseText) {
+        try {
+          const data = JSON.parse(responseText)
+          // Data parsed successfully
+        } catch {
+          // Response is not JSON, but that's okay for success case
+        }
+      }
+      
       toast.success('Todo updated successfully')
       onSuccess()
       router.refresh()
@@ -115,6 +143,30 @@ export function EditTodoForm({ todo, onCancel, onSuccess }: EditTodoFormProps) {
       setLoading(false)
     }
   }
+
+  // Cmd+Return to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        
+        if (loading) return
+        
+        // Trigger form submission
+        const form = document.querySelector('form')
+        if (form) {
+          const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement
+          if (submitButton && !submitButton.disabled) {
+            submitButton.click()
+          }
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => document.removeEventListener('keydown', handleKeyDown, true)
+  }, [loading])
 
   return (
     <Card className="mb-6">
@@ -131,6 +183,17 @@ export function EditTodoForm({ todo, onCancel, onSuccess }: EditTodoFormProps) {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="What needs to be done?"
               required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-todo-description">Description</Label>
+            <Textarea
+              id="edit-todo-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add more details about this task (optional)"
+              rows={3}
             />
           </div>
 

@@ -95,8 +95,14 @@ export async function POST(request: NextRequest) {
   // TODO: Re-enable auth after fixing code verification
   const user = await getDevUser()
 
-  const body = await request.json()
-  const { title, priority, dueDate, visibility, sharedWithUserIds } = body
+  let body
+  try {
+    body = await request.json()
+  } catch (error) {
+    return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
+  }
+  
+  const { title, description, priority, dueDate, visibility, sharedWithUserIds } = body
 
   if (!title) {
     return NextResponse.json({ error: 'Title required' }, { status: 400 })
@@ -105,6 +111,7 @@ export async function POST(request: NextRequest) {
   const todo = await prisma.todo.create({
     data: {
       title,
+      description: description || null,
       ownerId: user.id,
       priority: priority || null,
       dueDate: dueDate ? new Date(dueDate) : null,

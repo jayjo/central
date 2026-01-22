@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -15,7 +15,7 @@ import {
   Item as SelectItem,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Kbd } from '@/components/ui/kbd'
+import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
 
 interface QuickLauncherProps {
   isOpen: boolean
@@ -24,11 +24,18 @@ interface QuickLauncherProps {
 
 export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
   const router = useRouter()
+  const orgSlug = useOrgSlug()
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState<string>('')
   const [dueDate, setDueDate] = useState('')
   const [loading, setLoading] = useState(false)
-  const dateInputRef = useRef<HTMLInputElement>(null)
+  
+  const getTodoUrl = (todoId: string) => {
+    if (orgSlug) {
+      return `/${orgSlug}/todos/${todoId}`
+    }
+    return `/todos/${todoId}`
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -43,21 +50,6 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
     }
   }, [isOpen])
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Opt+Cmd+S to focus date field
-      if ((e.altKey || e.optionKey) && (e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault()
-        dateInputRef.current?.focus()
-        dateInputRef.current?.showPicker()
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen])
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -99,7 +91,7 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
       toast.success('Todo created successfully')
       onClose()
       router.refresh()
-      router.push(`/todos/${data.todo.id}`)
+      router.push(getTodoUrl(data.todo.id))
     } catch (err: any) {
       toast.error(err.message || 'Failed to create todo')
     } finally {
@@ -159,18 +151,8 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="quick-launcher-dueDate">
-                  Due Date
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    <Kbd>
-                      <span>⌥</span>
-                      <span>⌘</span>
-                      <span>S</span>
-                    </Kbd>
-                  </span>
-                </Label>
+                <Label htmlFor="quick-launcher-dueDate">Due Date</Label>
                 <Input
-                  ref={dateInputRef}
                   id="quick-launcher-dueDate"
                   type="date"
                   value={dueDate}

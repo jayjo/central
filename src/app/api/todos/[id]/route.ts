@@ -79,41 +79,66 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const body = await request.json()
-  const { title, status, priority, dueDate, visibility, sharedWithUserIds } =
+  let body
+  try {
+    body = await request.json()
+  } catch (error) {
+    return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
+  }
+  
+  const { title, description, status, priority, dueDate, visibility, sharedWithUserIds } =
     body
 
-  const updated = await prisma.todo.update({
-    where: { id: params.id },
-    data: {
-      ...(title && { title }),
-      ...(status && { status }),
-      ...(priority !== undefined && { priority }),
-      ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
-      ...(visibility && { visibility }),
-      ...(sharedWithUserIds && {
-        sharedWith: {
-          set: sharedWithUserIds.map((id: string) => ({ id })),
-        },
-      }),
-    },
-    include: {
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-      sharedWith: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
-  })
+  try {
+    // Process description - handle string, null, or undefined
+    let processedDescription: string | null = null
+    if (description !== undefined) {
+      if (typeof description === 'string' && description.trim()) {
+        processedDescription = description.trim()
+      } else {
+        processedDescription = null
+      }
+    }
 
-  return NextResponse.json({ todo: updated })
+    const updated = await prisma.todo.update({
+      where: { id: params.id },
+      data: {
+        ...(title && { title }),
+        ...(description !== undefined && { description: processedDescription }),
+        ...(status && { status }),
+        ...(priority !== undefined && { priority }),
+        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(visibility && { visibility }),
+        ...(sharedWithUserIds && {
+          sharedWith: {
+            set: sharedWithUserIds.map((id: string) => ({ id })),
+          },
+        }),
+      },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        sharedWith: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    })
+
+    return NextResponse.json({ todo: updated })
+  } catch (error: any) {
+    console.error('Error updating todo:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to update todo' },
+      { status: 500 }
+    )
+  }
 }

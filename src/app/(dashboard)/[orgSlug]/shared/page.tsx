@@ -1,28 +1,36 @@
-import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
+import { TodoList } from '@/components/todos/TodoList'
+import { getOrgIdFromSlug } from '@/lib/routing'
+import { redirect } from 'next/navigation'
 
-export default async function SharedTodosPage() {
+export default async function OrgSlugSharedTodosPage({
+  params,
+}: {
+  params: { orgSlug: string }
+}) {
+  // Resolve org slug to org ID
+  const orgId = await getOrgIdFromSlug(params.orgSlug)
+  
+  if (!orgId) {
+    redirect('/')
+  }
+
   // TODO: Re-enable auth after fixing code verification
   // Temporary: Use dev user
   const user = await prisma.user.findFirst({
     where: { email: 'dev@central.local' },
-    include: { org: true },
   }) || await prisma.user.create({
     data: {
       email: 'dev@central.local',
       name: 'Dev User',
       orgId: 'default-org',
     },
-    include: { org: true },
   })
 
-  // If user has an org slug, redirect to org-scoped route
-  if (user.org?.slug) {
-    redirect(`/${user.org.slug}/shared`)
+  // Verify user belongs to this org
+  if (user.orgId !== orgId) {
+    redirect('/')
   }
-
-  // If no org slug, redirect to settings
-  redirect('/settings')
 
   const todos = await prisma.todo.findMany({
     where: {
@@ -30,9 +38,14 @@ export default async function SharedTodosPage() {
         { ownerId: { not: user.id } },
         {
           OR: [
-            { visibility: 'ORG', owner: { orgId: user.orgId } },
+            { visibility: 'ORG', owner: { orgId: orgId } },
             { sharedWith: { some: { id: user.id } } },
           ],
+        },
+        {
+          owner: {
+            orgId: orgId,
+          },
         },
       ],
     },

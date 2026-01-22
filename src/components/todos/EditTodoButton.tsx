@@ -10,6 +10,7 @@ interface EditTodoButtonProps {
   todo: {
     id: string
     title: string
+    description: string | null
     priority: string | null
     dueDate: string | null
     visibility: string
