@@ -2,9 +2,21 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { SettingsForm } from '@/components/settings/SettingsForm'
+import { getOrgIdFromSlug } from '@/lib/routing'
 import { generateSlugFromOrgId } from '@/lib/org-slug'
 
-export default async function SettingsPage() {
+export default async function OrgSlugSettingsPage({
+  params,
+}: {
+  params: { orgSlug: string }
+}) {
+  // Resolve org slug to org ID
+  const orgId = await getOrgIdFromSlug(params.orgSlug)
+  
+  if (!orgId) {
+    redirect('/')
+  }
+
   // TODO: Re-enable auth after fixing code verification
   // const session = await getSession()
   // if (!session) {
@@ -24,21 +36,21 @@ export default async function SettingsPage() {
     include: { org: true },
   })
 
-  // If user has an org slug, redirect to org-scoped settings
-  if (user.org?.slug) {
-    redirect(`/${user.org.slug}/settings`)
+  // Verify user belongs to this org
+  if (user.orgId !== orgId) {
+    redirect('/')
   }
 
   // Ensure org exists
   if (!user.org) {
     // Create default org if it doesn't exist
     const org = await prisma.org.upsert({
-      where: { id: 'default-org' },
+      where: { id: orgId },
       update: {},
       create: {
-        id: 'default-org',
+        id: orgId,
         name: 'Default Organization',
-        slug: generateSlugFromOrgId('default-org'), // Auto-generate slug from org ID
+        slug: generateSlugFromOrgId(orgId), // Auto-generate slug from org ID
       },
     })
     return <SettingsForm user={user} org={org} />

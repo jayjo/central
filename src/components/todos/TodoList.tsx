@@ -3,9 +3,18 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatDate } from '@/lib/utils'
+import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
 import type { TodoWithRelations } from '@/types'
 
 export function TodoList({ todos }: { todos: any[] }) {
+  const orgSlug = useOrgSlug()
+  
+  const getTodoUrl = (todoId: string) => {
+    if (orgSlug) {
+      return `/${orgSlug}/todos/${todoId}`
+    }
+    return `/todos/${todoId}`
+  }
   if (todos.length === 0) {
     return (
       <Card>
@@ -19,7 +28,7 @@ export function TodoList({ todos }: { todos: any[] }) {
   return (
     <div className="space-y-2">
       {todos.map((todo) => (
-        <Link key={todo.id} href={`/todos/${todo.id}`}>
+        <Link key={todo.id} href={getTodoUrl(todo.id)}>
           <Card className="hover:bg-accent transition-colors cursor-pointer">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">

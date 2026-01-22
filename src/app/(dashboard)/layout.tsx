@@ -1,76 +1,37 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { Sidebar } from '@/components/layout/Sidebar'
 import { QuickLauncherProvider } from '@/components/quick-launcher/QuickLauncherProvider'
+import { OrgSlugProvider } from '@/components/layout/OrgSlugProvider'
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  // TODO: Re-enable auth after fixing code verification
-  // const session = await getSession()
-  // if (!session) {
-  //   redirect('/login')
-  // }
+  // This layout is only used for routes that haven't been migrated to org-slug routes yet
+  // Most routes should redirect to org-slug routes, so we just pass through children
+  // The org-slug layout will handle the sidebar
   
-  // Temporary: Create/get a dev user for testing
+  // Get user's org slug for the provider (needed for components that use org slug hooks)
+  // TODO: Re-enable auth after fixing code verification
   const devUser = await prisma.user.findFirst({
     where: { email: 'dev@central.local' },
+    include: { org: true },
   }) || await prisma.user.create({
     data: {
       email: 'dev@central.local',
       name: 'Dev User',
       orgId: 'default-org',
     },
+    include: { org: true },
   })
-  
-  const session = {
-    user: {
-      id: devUser.id,
-      email: devUser.email,
-      name: devUser.name,
-    },
-  }
 
-  // Get recent todos for the sidebar menu
-  const recentTodos = await prisma.todo.findMany({
-    where: {
-      OR: [
-        { ownerId: devUser.id },
-        { sharedWith: { some: { id: devUser.id } } },
-      ],
-    },
-    orderBy: { updatedAt: 'desc' },
-    take: 10,
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      ownerId: true,
-      dueDate: true,
-      updatedAt: true,
-      owner: {
-        select: {
-          name: true,
-          email: true,
-        },
-      },
-      _count: {
-        select: {
-          messages: true,
-        },
-      },
-    },
-  })
+  const orgSlug = devUser.org?.slug || null
 
   return (
     <QuickLauncherProvider>
-      <div className="flex h-screen bg-background overflow-hidden">
-        <Sidebar userEmail={session.user?.email} todos={recentTodos} currentUserId={devUser.id} />
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
+      <OrgSlugProvider orgSlug={orgSlug}>
+        {children}
+      </OrgSlugProvider>
     </QuickLauncherProvider>
   )
 }

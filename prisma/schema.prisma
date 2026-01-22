@@ -67,6 +67,7 @@ model VerificationToken {
 model Org {
   id        String   @id @default(cuid())
   name      String
+  slug      String?  @unique
   createdAt DateTime @default(now())
   users     User[]
 }
@@ -74,6 +75,7 @@ model Org {
 model Todo {
   id          String    @id @default(cuid())
   title       String
+  description String?
   ownerId     String
   owner       User      @relation(fields: [ownerId], references: [id])
   status      TodoStatus @default(OPEN)

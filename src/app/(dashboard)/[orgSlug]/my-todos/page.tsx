@@ -1,39 +1,59 @@
-import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
+import { TodoList } from '@/components/todos/TodoList'
+import { CreateTodoForm } from '@/components/todos/CreateTodoForm'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Kbd } from '@/components/ui/kbd'
+import { getOrgIdFromSlug } from '@/lib/routing'
+import { redirect } from 'next/navigation'
+import { getMyTodosUrl } from '@/lib/org-routing'
 
-export default async function MyTodosPage({
+export default async function OrgSlugMyTodosPage({
+  params,
   searchParams,
 }: {
+  params: { orgSlug: string }
   searchParams: { new?: string }
 }) {
+  // Resolve org slug to org ID
+  const orgId = await getOrgIdFromSlug(params.orgSlug)
+  
+  if (!orgId) {
+    redirect('/')
+  }
+
   // TODO: Re-enable auth after fixing code verification
   // Temporary: Use dev user
   const user = await prisma.user.findFirst({
     where: { email: 'dev@central.local' },
-    include: { org: true },
   }) || await prisma.user.create({
     data: {
       email: 'dev@central.local',
       name: 'Dev User',
       orgId: 'default-org',
     },
-    include: { org: true },
   })
 
-  // If user has an org slug, redirect to org-scoped route
-  if (user.org?.slug) {
-    const query = searchParams.new ? '?new=true' : ''
-    redirect(`/${user.org.slug}/my-todos${query}`)
+  // Verify user belongs to this org
+  if (user.orgId !== orgId) {
+    redirect('/')
   }
-
-  // If no org slug, redirect to settings
-  redirect('/settings')
 
   const todos = await prisma.todo.findMany({
     where: {
-      OR: [
-        { ownerId: user.id },
-        { visibility: 'ORG', owner: { orgId: user.orgId } },
+      AND: [
+        {
+          OR: [
+            { ownerId: user.id },
+            { visibility: 'ORG', owner: { orgId: orgId } },
+          ],
+        },
+        {
+          owner: {
+            orgId: orgId,
+          },
+        },
       ],
     },
     include: {
@@ -63,6 +83,8 @@ export default async function MyTodosPage({
     ],
   })
 
+  const myTodosUrl = getMyTodosUrl(params.orgSlug)
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -71,7 +93,7 @@ export default async function MyTodosPage({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <a href="/my-todos?new=true">
+                <a href={`${myTodosUrl}?new=true`}>
                   <Button>
                     <Plus className="mr-2 h-4 w-4" />
                     New Todo

@@ -4,12 +4,15 @@ const prisma = new PrismaClient()
 
 async function main() {
   // Create an organization
+  // Auto-generate slug from org ID (use org ID directly as slug)
+  const orgId = 'default-org'
   const org = await prisma.org.upsert({
-    where: { id: 'default-org' },
+    where: { id: orgId },
     update: {},
     create: {
-      id: 'default-org',
+      id: orgId,
       name: 'Default Organization',
+      slug: orgId, // Auto-generate slug from org ID
     },
   })
 

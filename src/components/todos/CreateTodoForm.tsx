@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,12 +19,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<string>('')
   const [dueDate, setDueDate] = useState('')
   const [visibility, setVisibility] = useState<string>('PRIVATE')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const orgSlug = useOrgSlug()
+  
+  const getTodoUrl = (todoId: string) => {
+    if (orgSlug) {
+      return `/${orgSlug}/todos/${todoId}`
+    }
+    return `/todos/${todoId}`
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -41,6 +51,7 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
+          description: description ? description.trim() : null,
           priority: priority || null,
           dueDate: dueDate || null,
           visibility: visibility || 'PRIVATE',
@@ -55,6 +66,7 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
 
       // Reset form
       setTitle('')
+      setDescription('')
       setPriority('')
       setDueDate('')
       setVisibility('PRIVATE')
@@ -65,7 +77,7 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
         onSuccess()
       } else {
         router.refresh()
-        router.push(`/todos/${data.todo.id}`)
+        router.push(getTodoUrl(data.todo.id))
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create todo')
@@ -89,6 +101,17 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="What needs to be done?"
               required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Add more details about this task (optional)"
+              rows={3}
             />
           </div>
 

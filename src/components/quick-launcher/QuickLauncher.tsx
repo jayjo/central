@@ -15,6 +15,7 @@ import {
   Item as SelectItem,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
 
 interface QuickLauncherProps {
   isOpen: boolean
@@ -23,19 +24,24 @@ interface QuickLauncherProps {
 
 export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
   const router = useRouter()
+  const orgSlug = useOrgSlug()
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState<string>('')
   const [dueDate, setDueDate] = useState('')
   const [loading, setLoading] = useState(false)
+  
+  const getTodoUrl = (todoId: string) => {
+    if (orgSlug) {
+      return `/${orgSlug}/todos/${todoId}`
+    }
+    return `/todos/${todoId}`
+  }
 
   useEffect(() => {
     if (isOpen) {
-      // Focus the title input when opened
-      const timer = setTimeout(() => {
-        const input = document.getElementById('quick-launcher-title')
-        input?.focus()
-      }, 100)
-      return () => clearTimeout(timer)
+      // Focus the title input immediately when opened
+      const input = document.getElementById('quick-launcher-title')
+      input?.focus()
     } else {
       // Reset form when closed
       setTitle('')
@@ -43,6 +49,7 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
       setDueDate('')
     }
   }, [isOpen])
+
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -84,7 +91,7 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
       toast.success('Todo created successfully')
       onClose()
       router.refresh()
-      router.push(`/todos/${data.todo.id}`)
+      router.push(getTodoUrl(data.todo.id))
     } catch (err: any) {
       toast.error(err.message || 'Failed to create todo')
     } finally {
@@ -129,30 +136,44 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quick-launcher-priority">Priority</Label>
-                  <Select value={priority || undefined} onValueChange={(value) => setPriority(value || '')}>
-                    <SelectTrigger id="quick-launcher-priority">
-                      <SelectValue placeholder="Optional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="LOW">Low</SelectItem>
-                      <SelectItem value="MEDIUM">Medium</SelectItem>
-                      <SelectItem value="HIGH">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="quick-launcher-priority">Priority</Label>
+                <Select value={priority || undefined} onValueChange={(value) => setPriority(value || '')}>
+                  <SelectTrigger id="quick-launcher-priority">
+                    <SelectValue placeholder="Optional" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="LOW">Low</SelectItem>
+                    <SelectItem value="MEDIUM">Medium</SelectItem>
+                    <SelectItem value="HIGH">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="quick-launcher-dueDate">Due Date</Label>
-                  <Input
-                    id="quick-launcher-dueDate"
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="quick-launcher-dueDate">Due Date</Label>
+                <Input
+                  id="quick-launcher-dueDate"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Arrow key navigation for date
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      const currentDate = dueDate ? new Date(dueDate) : new Date()
+                      const change = e.key === 'ArrowUp' ? 1 : -1
+                      currentDate.setDate(currentDate.getDate() + change)
+                      setDueDate(currentDate.toISOString().split('T')[0])
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                      e.preventDefault()
+                      const currentDate = dueDate ? new Date(dueDate) : new Date()
+                      const change = e.key === 'ArrowLeft' ? -1 : 1
+                      currentDate.setDate(currentDate.getDate() + change)
+                      setDueDate(currentDate.toISOString().split('T')[0])
+                    }
+                  }}
+                />
               </div>
 
               <div className="flex gap-2 justify-end">

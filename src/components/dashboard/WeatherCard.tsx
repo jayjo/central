@@ -42,7 +42,7 @@ export function WeatherCard({ zipCode }: { zipCode?: string | null }) {
 
   if (!zipCode) {
     return (
-      <Card>
+      <Card className="justify-start">
         <CardHeader>
           <CardTitle>Weather</CardTitle>
         </CardHeader>
@@ -57,7 +57,7 @@ export function WeatherCard({ zipCode }: { zipCode?: string | null }) {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="justify-start">
         <CardHeader>
           <CardTitle>Weather</CardTitle>
         </CardHeader>
@@ -73,7 +73,7 @@ export function WeatherCard({ zipCode }: { zipCode?: string | null }) {
 
   if (error || !weather) {
     return (
-      <Card>
+      <Card className="justify-start">
         <CardHeader>
           <CardTitle>Weather</CardTitle>
         </CardHeader>
@@ -87,7 +87,7 @@ export function WeatherCard({ zipCode }: { zipCode?: string | null }) {
   }
 
   return (
-    <Card>
+    <Card className="justify-between">
       <CardHeader>
         <CardTitle>Weather</CardTitle>
       </CardHeader>
