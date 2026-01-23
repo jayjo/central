@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getDevUser } from '@/lib/dev-auth'
+import { getSession } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
 
 export async function PATCH(request: NextRequest) {
-  // TODO: Re-enable auth after fixing code verification
-  const user = await getDevUser()
+  const session = await getSession()
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+  })
+
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  }
 
   const body = await request.json()
   const { currentPassword, newPassword } = body
@@ -15,14 +26,6 @@ export async function PATCH(request: NextRequest) {
       { error: 'Password must be at least 8 characters long' },
       { status: 400 }
     )
-  }
-
-  const dbUser = await prisma.user.findUnique({
-    where: { id: user.id },
-  })
-
-  if (!dbUser) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
   // If user has a password, verify current password

@@ -1,24 +1,25 @@
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
+import { getSession } from '@/lib/auth'
 
 export default async function MyTodosPage({
   searchParams,
 }: {
   searchParams: { new?: string }
 }) {
-  // TODO: Re-enable auth after fixing code verification
-  // Temporary: Use dev user
-  const user = await prisma.user.findFirst({
-    where: { email: 'dev@central.local' },
-    include: { org: true },
-  }) || await prisma.user.create({
-    data: {
-      email: 'dev@central.local',
-      name: 'Dev User',
-      orgId: 'default-org',
-    },
+  const session = await getSession()
+  if (!session?.user?.email) {
+    redirect('/login')
+  }
+  
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
     include: { org: true },
   })
+  
+  if (!user) {
+    redirect('/login')
+  }
 
   // If user has an org slug, redirect to org-scoped route
   if (user.org?.slug) {

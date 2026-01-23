@@ -21,39 +21,32 @@ export default async function OrgSlugLayout({
     redirect('/')
   }
 
-  // TODO: Re-enable auth after fixing code verification
-  // const session = await getSession()
-  // if (!session) {
-  //   redirect('/login')
-  // }
+  const session = await getSession()
+  if (!session?.user?.email) {
+    redirect('/login')
+  }
   
-  // Temporary: Create/get a dev user for testing
-  const devUser = await prisma.user.findFirst({
-    where: { email: 'dev@central.local' },
-    include: { org: true },
-  }) || await prisma.user.create({
-    data: {
-      email: 'dev@central.local',
-      name: 'Dev User',
-      orgId: 'default-org',
-    },
+  // Get the actual logged-in user
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
     include: { org: true },
   })
   
-  const session = {
-    user: {
-      id: devUser.id,
-      email: devUser.email,
-      name: devUser.name,
-    },
+  if (!user) {
+    redirect('/login')
+  }
+  
+  // Verify user belongs to this org
+  if (user.orgId !== orgId) {
+    redirect('/')
   }
 
   // Get recent todos for the sidebar menu, ordered by due date (soonest first)
   const recentTodos = await prisma.todo.findMany({
     where: {
       OR: [
-        { ownerId: devUser.id },
-        { sharedWith: { some: { id: devUser.id } } },
+        { ownerId: user.id },
+        { sharedWith: { some: { id: user.id } } },
       ],
     },
     orderBy: [
@@ -87,7 +80,7 @@ export default async function OrgSlugLayout({
     <QuickLauncherProvider>
       <OrgSlugProvider orgSlug={params.orgSlug}>
         <div className="flex h-screen bg-background overflow-hidden">
-          <Sidebar userEmail={session.user?.email} todos={recentTodos} currentUserId={devUser.id} />
+          <Sidebar userEmail={session.user?.email} todos={recentTodos} currentUserId={user.id} />
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </OrgSlugProvider>
