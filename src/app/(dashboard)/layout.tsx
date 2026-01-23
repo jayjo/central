@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { getSession } from '@/lib/auth'
 import { QuickLauncherProvider } from '@/components/quick-launcher/QuickLauncherProvider'
 import { OrgSlugProvider } from '@/components/layout/OrgSlugProvider'
 
@@ -12,20 +13,16 @@ export default async function DashboardLayout({
   // The org-slug layout will handle the sidebar
   
   // Get user's org slug for the provider (needed for components that use org slug hooks)
-  // TODO: Re-enable auth after fixing code verification
-  const devUser = await prisma.user.findFirst({
-    where: { email: 'dev@central.local' },
-    include: { org: true },
-  }) || await prisma.user.create({
-    data: {
-      email: 'dev@central.local',
-      name: 'Dev User',
-      orgId: 'default-org',
-    },
-    include: { org: true },
-  })
-
-  const orgSlug = devUser.org?.slug || null
+  const session = await getSession()
+  
+  let orgSlug = null
+  if (session?.user?.email) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { org: true },
+    })
+    orgSlug = user?.org?.slug || null
+  }
 
   return (
     <QuickLauncherProvider>

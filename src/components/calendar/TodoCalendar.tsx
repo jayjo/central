@@ -172,11 +172,11 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Calendar Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold">
-            {getDateLabel()}
-          </h2>
+      <div className="grid grid-cols-3 items-center mb-6">
+        <h2 className="text-2xl font-bold">
+          {getDateLabel()}
+        </h2>
+        <div className="flex justify-center">
           <TooltipProvider>
             <div className="flex gap-1 border rounded-md">
               <Tooltip>
@@ -242,7 +242,7 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
             </div>
           </TooltipProvider>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-end">
           <Button variant="outline" size="icon" onClick={navigatePrevious}>
             <ChevronLeft className="h-4 w-4" />
           </Button>

@@ -8,6 +8,7 @@ import { Kbd } from '@/components/ui/kbd'
 import { getOrgIdFromSlug } from '@/lib/routing'
 import { redirect } from 'next/navigation'
 import { getMyTodosUrl } from '@/lib/org-routing'
+import { getSession } from '@/lib/auth'
 
 export default async function OrgSlugMyTodosPage({
   params,
@@ -23,17 +24,18 @@ export default async function OrgSlugMyTodosPage({
     redirect('/')
   }
 
-  // TODO: Re-enable auth after fixing code verification
-  // Temporary: Use dev user
-  const user = await prisma.user.findFirst({
-    where: { email: 'dev@central.local' },
-  }) || await prisma.user.create({
-    data: {
-      email: 'dev@central.local',
-      name: 'Dev User',
-      orgId: 'default-org',
-    },
+  const session = await getSession()
+  if (!session?.user?.email) {
+    redirect('/login')
+  }
+  
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
   })
+  
+  if (!user) {
+    redirect('/login')
+  }
 
   // Verify user belongs to this org
   if (user.orgId !== orgId) {

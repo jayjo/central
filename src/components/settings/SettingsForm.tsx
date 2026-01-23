@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
 import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,6 +15,7 @@ interface User {
   email: string
   name: string | null
   zipCode: string | null
+  password: string | null
 }
 
 interface Org {
@@ -35,6 +37,14 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
   const [profileSaved, setProfileSaved] = useState(true)
   const [locationSaved, setLocationSaved] = useState(true)
   const [slugSaved, setSlugSaved] = useState(true)
+  
+  // Password state
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const hasPassword = !!user.password
   
   const hasProfileChanges = name !== (user.name || '')
   const hasLocationChanges = zipCode !== (user.zipCode || '')
@@ -184,6 +194,49 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
     }
   }
 
+  async function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters long')
+      return
+    }
+    
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+
+    setPasswordLoading(true)
+
+    try {
+      const response = await fetch('/api/user/password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: hasPassword ? currentPassword : undefined,
+          newPassword,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to update password')
+      }
+
+      toast.success(hasPassword ? 'Password updated successfully' : 'Password set successfully')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setShowPasswordForm(false)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update password')
+    } finally {
+      setPasswordLoading(false)
+    }
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">Settings</h1>
@@ -300,16 +353,119 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
           </CardContent>
         </Card>
 
-        {/* Preferences */}
+        {/* Password Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Preferences</CardTitle>
-            <CardDescription>Customize your experience</CardDescription>
+            <CardTitle>Password</CardTitle>
+            <CardDescription>
+              {hasPassword ? 'Change your password' : 'Set a password to enable password login'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!showPasswordForm ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  {hasPassword 
+                    ? 'You can sign in with your password or use a magic link.'
+                    : 'Set a password to enable password-based sign in. You can still use magic links.'}
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPasswordForm(true)}
+                >
+                  {hasPassword ? 'Change Password' : 'Set Password'}
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                {hasPassword && (
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Input
+                      id="currentPassword"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required={hasPassword}
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">
+                    {hasPassword ? 'New Password' : 'Password'}
+                  </Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={8}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Must be at least 8 characters long
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    className={confirmPassword && newPassword !== confirmPassword ? 'border-red-500' : ''}
+                  />
+                  {confirmPassword && newPassword !== confirmPassword && (
+                    <p className="text-xs text-red-600">Passwords do not match</p>
+                  )}
+                  {confirmPassword && newPassword === confirmPassword && newPassword.length >= 8 && (
+                    <p className="text-xs text-green-600">Passwords match</p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    type="submit" 
+                    disabled={passwordLoading || (confirmPassword && newPassword !== confirmPassword) || newPassword.length < 8}
+                  >
+                    {passwordLoading ? 'Saving...' : hasPassword ? 'Update Password' : 'Set Password'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowPasswordForm(false)
+                      setCurrentPassword('')
+                      setNewPassword('')
+                      setConfirmPassword('')
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Account Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Account</CardTitle>
+            <CardDescription>Manage your account settings</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              More preferences coming soon...
-            </p>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (confirm('Are you sure you want to sign out?')) {
+                  await signOut({ callbackUrl: '/login' })
+                }
+              }}
+            >
+              Sign Out
+            </Button>
           </CardContent>
         </Card>
       </div>

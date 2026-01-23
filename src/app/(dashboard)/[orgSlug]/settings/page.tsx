@@ -17,24 +17,19 @@ export default async function OrgSlugSettingsPage({
     redirect('/')
   }
 
-  // TODO: Re-enable auth after fixing code verification
-  // const session = await getSession()
-  // if (!session) {
-  //   redirect('/login')
-  // }
+  const session = await getSession()
+  if (!session?.user?.email) {
+    redirect('/login')
+  }
   
-  // Temporary: Use dev user
-  const user = await prisma.user.findFirst({
-    where: { email: 'dev@central.local' },
-    include: { org: true },
-  }) || await prisma.user.create({
-    data: {
-      email: 'dev@central.local',
-      name: 'Dev User',
-      orgId: 'default-org',
-    },
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
     include: { org: true },
   })
+  
+  if (!user) {
+    redirect('/login')
+  }
 
   // Verify user belongs to this org
   if (user.orgId !== orgId) {

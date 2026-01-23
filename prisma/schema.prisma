@@ -44,6 +44,7 @@ model User {
   name           String?
   zipCode        String?
   image          String?
+  password       String?           // Hashed password for credentials auth
   createdAt      DateTime          @default(now())
   orgId           String            @default("default-org")
   org            Org               @relation(fields: [orgId], references: [id])
