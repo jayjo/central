@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { CheckSquare, Calendar, Settings } from 'lucide-react'
+import { CheckSquare, Calendar, Settings, MessageSquare, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TodosMenu } from './TodosMenu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Kbd } from '@/components/ui/kbd'
 import { useCalendarUrl, useMyTodosUrl, useSettingsUrl, useOrgSlug } from '@/components/layout/OrgSlugProvider'
+import { FeedbackModal } from '@/components/feedback/FeedbackModal'
+import { OnboardingModal } from '@/components/onboarding/OnboardingModal'
 
 interface Todo {
   id: string
@@ -31,6 +34,8 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
   const pathname = usePathname()
   const router = useRouter()
   const [showTodosMenu, setShowTodosMenu] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false)
   const orgSlug = useOrgSlug()
   const calendarUrl = useCalendarUrl()
   const myTodosUrl = useMyTodosUrl()
@@ -85,14 +90,21 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href={calendarUrl}>
-                  <Button variant="ghost" className="w-full justify-center p-2">
-                    <span className="font-bold text-lg">C</span>
+                  <Button variant="ghost" className="w-full justify-center p-2 h-12">
+                    <Image
+                      src="/images/nuclio-logo.png"
+                      alt="Nuclio"
+                      width={32}
+                      height={32}
+                      className="object-contain"
+                      priority
+                    />
                   </Button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="flex items-center gap-2">
-                  <span>Central</span>
+                  <span>Nuclio</span>
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -153,7 +165,45 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
         </TooltipProvider>
 
         {/* Profile/Settings */}
-        <div className="p-2 border-t">
+        <div className="p-2 border-t space-y-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-full"
+                  onClick={() => setShowOnboardingModal(true)}
+                >
+                  <HelpCircle className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="flex items-center gap-2">
+                  <span>Help & Onboarding</span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-full"
+                  onClick={() => setShowFeedbackModal(true)}
+                >
+                  <MessageSquare className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="flex items-center gap-2">
+                  <span>Send Feedback</span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -193,6 +243,20 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
           highlightedTodoId={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('highlight') || undefined : undefined}
         />
       )}
+
+      {/* Feedback Modal */}
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboardingModal}
+        onClose={() => setShowOnboardingModal(false)}
+      />
+      
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        userEmail={userEmail}
+      />
     </>
   )
 }

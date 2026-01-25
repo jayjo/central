@@ -98,7 +98,7 @@ export default async function MyTodosPage({
       </div>
 
       {searchParams.new ? (
-        <div className="mb-6">
+        <div className="mb-6" key="create-todo-form">
           <CreateTodoForm />
         </div>
       ) : null}

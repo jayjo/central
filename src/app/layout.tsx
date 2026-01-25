@@ -6,7 +6,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Central - Shared Todo Hub',
+  title: 'Nuclio - Shared Todo Hub',
   description: 'A shared todo app to keep people and families\' digital lives centralized and together',
 }
 

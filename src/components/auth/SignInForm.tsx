@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +18,12 @@ export function SignInForm() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
 
+  const switchToPassword = () => {
+    setAuthMethod('password')
+    setError('')
+    setPassword('')
+  }
+
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -31,14 +38,22 @@ export function SignInForm() {
       })
       
       if (result?.error) {
-        setError('Failed to send email. Please try again.')
+        console.error('Sign in result error:', result.error)
+        // Map NextAuth error codes to user-friendly messages
+        let errorMessage = 'Failed to send email. Please try again.'
+        if (result.error === 'EmailSignin') {
+          errorMessage = 'Failed to send email. Please check your email address and try again. If the problem persists, check your Resend configuration.'
+        } else if (result.error.includes('email') || result.error.includes('Email')) {
+          errorMessage = result.error
+        }
+        setError(errorMessage)
         setLoading(false)
       } else {
         setSubmitted(true)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign in error:', error)
-      setError('An error occurred. Please try again.')
+      setError(error?.message || 'An error occurred. Please try again.')
       setLoading(false)
     }
   }
@@ -101,38 +116,12 @@ export function SignInForm() {
       <CardHeader>
         <CardTitle>Sign in</CardTitle>
         <CardDescription>
-          Choose how you'd like to sign in
+          {authMethod === 'email' 
+            ? "We'll send you a link to sign in. No password needed."
+            : "Sign in with your email and password"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Auth Method Toggle */}
-        <div className="flex gap-2 border rounded-md p-1">
-          <Button
-            type="button"
-            variant={authMethod === 'email' ? 'default' : 'ghost'}
-            className="flex-1"
-            onClick={() => {
-              setAuthMethod('email')
-              setError('')
-              setPassword('')
-            }}
-          >
-            Magic Link
-          </Button>
-          <Button
-            type="button"
-            variant={authMethod === 'password' ? 'default' : 'ghost'}
-            className="flex-1"
-            onClick={() => {
-              setAuthMethod('password')
-              setError('')
-              setPassword('')
-            }}
-          >
-            Password
-          </Button>
-        </div>
-
         {error && (
           <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
             {error}
@@ -146,17 +135,25 @@ export function SignInForm() {
               <Input
                 id="email"
                 type="email"
+                pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoFocus
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Sending...' : 'Send Magic Link'}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              We'll send you a link to sign in. No password needed.
+              <button 
+                type="button" 
+                onClick={switchToPassword} 
+                className="text-primary underline hover:text-primary/80"
+              >
+                Sign in using your password instead
+              </button>
             </p>
           </form>
         ) : (
@@ -166,14 +163,28 @@ export function SignInForm() {
               <Input
                 id="email-password"
                 type="email"
+                pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoFocus
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // TODO: Implement forgot password functionality
+                    toast.error('Forgot password feature coming soon')
+                  }}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -187,7 +198,17 @@ export function SignInForm() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              Don't have a password? <button type="button" onClick={() => setAuthMethod('email')} className="text-primary underline">Use magic link instead</button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setAuthMethod('email')
+                  setError('')
+                  setPassword('')
+                }} 
+                className="text-primary underline hover:text-primary/80"
+              >
+                Use magic link instead
+              </button>
             </p>
           </form>
         )}

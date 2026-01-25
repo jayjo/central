@@ -5,6 +5,7 @@ import { getOrgIdFromSlug } from '@/lib/routing'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { QuickLauncherProvider } from '@/components/quick-launcher/QuickLauncherProvider'
 import { OrgSlugProvider } from '@/components/layout/OrgSlugProvider'
+import { OnboardingProvider } from '@/components/onboarding/OnboardingProvider'
 
 export default async function OrgSlugLayout({
   children,
@@ -62,10 +63,18 @@ export default async function OrgSlugLayout({
       priority: true,
       dueDate: true,
       updatedAt: true,
+      visibility: true,
       owner: {
         select: {
+          id: true,
           name: true,
           email: true,
+          image: true,
+        },
+      },
+      sharedWith: {
+        select: {
+          id: true,
         },
       },
       _count: {
@@ -79,10 +88,12 @@ export default async function OrgSlugLayout({
   return (
     <QuickLauncherProvider>
       <OrgSlugProvider orgSlug={params.orgSlug}>
-        <div className="flex h-screen bg-background overflow-hidden">
-          <Sidebar userEmail={session.user?.email} todos={recentTodos} currentUserId={user.id} />
-          <main className="flex-1 overflow-y-auto">{children}</main>
-        </div>
+        <OnboardingProvider userCreatedAt={user.createdAt}>
+          <div className="flex h-screen bg-background overflow-hidden">
+            <Sidebar userEmail={session.user?.email} todos={recentTodos} currentUserId={user.id} />
+            <main className="flex-1 overflow-y-auto">{children}</main>
+          </div>
+        </OnboardingProvider>
       </OrgSlugProvider>
     </QuickLauncherProvider>
   )

@@ -40,20 +40,26 @@ export default async function OrgSlugDashboardPage({
   const message = await getTodayMessage()
 
   // Get all todos with due dates for the calendar, scoped to this org
+  // Include: user's todos, todos shared with user, and org-visible todos
   const todos = await prisma.todo.findMany({
     where: {
       AND: [
         {
           OR: [
+            // User's own todos
             { ownerId: user?.id },
+            // Todos explicitly shared with user
             { sharedWith: { some: { id: user?.id } } },
+            // Org-visible todos (visible to all in org)
             { visibility: 'ORG', owner: { orgId: orgId } },
           ],
         },
+        // Ensure owner is in the same org (for org-visible todos) OR todo is shared with user
         {
-          owner: {
-            orgId: orgId,
-          },
+          OR: [
+            { owner: { orgId: orgId } },
+            { sharedWith: { some: { id: user?.id } } },
+          ],
         },
       ],
       dueDate: {
@@ -69,8 +75,16 @@ export default async function OrgSlugDashboardPage({
       dueDate: true,
       owner: {
         select: {
+          id: true,
           name: true,
           email: true,
+          image: true,
+        },
+      },
+      visibility: true,
+      sharedWith: {
+        select: {
+          id: true,
         },
       },
       messages: {

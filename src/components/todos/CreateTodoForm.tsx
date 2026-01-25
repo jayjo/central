@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -22,11 +23,13 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<string>('')
   const [dueDate, setDueDate] = useState('')
-  const [visibility, setVisibility] = useState<string>('PRIVATE')
+  const [isShared, setIsShared] = useState(false)
+  const [createAnother, setCreateAnother] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
   const orgSlug = useOrgSlug()
+  const titleInputRef = useRef<HTMLInputElement>(null)
   
   const getTodoUrl = (todoId: string) => {
     if (orgSlug) {
@@ -34,6 +37,38 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
     }
     return `/todos/${todoId}`
   }
+
+  // Focus title input on mount and when form becomes visible
+  useEffect(() => {
+    // Use IntersectionObserver to wait for element to be visible
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && titleInputRef.current) {
+          // Element is visible, try to focus
+          setTimeout(() => {
+            titleInputRef.current?.focus()
+          }, 100)
+          observer.disconnect()
+        }
+      })
+    }, { threshold: 0.1 })
+
+    if (titleInputRef.current) {
+      observer.observe(titleInputRef.current)
+    }
+
+    // Fallback: try multiple times with increasing delays
+    const attempts = [0, 100, 300, 500]
+    attempts.forEach((delay) => {
+      setTimeout(() => {
+        if (titleInputRef.current && document.activeElement !== titleInputRef.current) {
+          titleInputRef.current.focus()
+        }
+      }, delay)
+    })
+
+    return () => observer.disconnect()
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -54,7 +89,7 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
           description: description ? description.trim() : null,
           priority: priority || null,
           dueDate: dueDate || null,
-          visibility: visibility || 'PRIVATE',
+          visibility: isShared ? 'ORG' : 'PRIVATE',
         }),
       })
 
@@ -64,20 +99,34 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
         throw new Error(data.error || 'Failed to create todo')
       }
 
-      // Reset form
-      setTitle('')
-      setDescription('')
-      setPriority('')
-      setDueDate('')
-      setVisibility('PRIVATE')
-      
       toast.success('Todo created successfully')
       
-      if (onSuccess) {
-        onSuccess()
-      } else {
+      if (createAnother) {
+        // Reset form and keep it open
+        setTitle('')
+        setDescription('')
+        setPriority('')
+        setDueDate('')
+        setIsShared(false)
         router.refresh()
-        router.push(getTodoUrl(data.todo.id))
+        // Focus title input after reset
+        setTimeout(() => {
+          titleInputRef.current?.focus()
+        }, 0)
+      } else {
+        // Reset form
+        setTitle('')
+        setDescription('')
+        setPriority('')
+        setDueDate('')
+        setIsShared(false)
+        
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          router.refresh()
+          router.push(getTodoUrl(data.todo.id))
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create todo')
@@ -97,10 +146,12 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
             <Label htmlFor="title">Title *</Label>
             <Input
               id="title"
+              ref={titleInputRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="What needs to be done?"
               required
+              autoFocus
             />
           </div>
 
@@ -141,37 +192,50 @@ export function CreateTodoForm({ onSuccess }: { onSuccess?: () => void }) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="visibility">Visibility</Label>
-            <Select value={visibility} onValueChange={setVisibility}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PRIVATE">Private</SelectItem>
-                <SelectItem value="ORG">Shared with Organization</SelectItem>
-                <SelectItem value="SPECIFIC">Shared with Specific Users</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="shared"
+                checked={isShared}
+                onCheckedChange={setIsShared}
+              />
+              <Label htmlFor="shared" className="text-sm font-normal cursor-pointer">
+                Share with organization
+              </Label>
+            </div>
           </div>
 
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
 
-          <div className="flex gap-2">
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Todo'}
-            </Button>
-            {onSuccess && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onSuccess}
-              >
-                Cancel
+          <div className="flex items-center gap-4">
+            <div className="flex gap-2">
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Creating...' : 'Create Todo'}
               </Button>
-            )}
+              {onSuccess && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onSuccess}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="createAnother"
+                checked={createAnother}
+                onChange={(e) => setCreateAnother(e.target.checked)}
+                className="h-4 w-4 rounded border-2 border-input cursor-pointer"
+              />
+              <Label htmlFor="createAnother" className="text-sm font-normal cursor-pointer">
+                Create another
+              </Label>
+            </div>
           </div>
         </form>
       </CardContent>
