@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -28,7 +29,10 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState<string>('')
   const [dueDate, setDueDate] = useState('')
+  const [isShared, setIsShared] = useState(false)
+  const [createAnother, setCreateAnother] = useState(false)
   const [loading, setLoading] = useState(false)
+  const titleInputRef = useRef<HTMLInputElement>(null)
   
   const getTodoUrl = (todoId: string) => {
     if (orgSlug) {
@@ -39,14 +43,31 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
 
   useEffect(() => {
     if (isOpen) {
-      // Focus the title input immediately when opened
-      const input = document.getElementById('quick-launcher-title')
-      input?.focus()
+      // Reset form when opened
+      setTitle('')
+      setPriority('')
+      setDueDate('')
+      setIsShared(false)
+      setCreateAnother(false)
+      // Focus the title input with multiple attempts
+      const focusInput = () => {
+        if (titleInputRef.current) {
+          titleInputRef.current.focus()
+          return true
+        }
+        return false
+      }
+      // Try immediately, then with delays
+      setTimeout(() => focusInput(), 0)
+      setTimeout(() => focusInput(), 50)
+      setTimeout(() => focusInput(), 100)
     } else {
       // Reset form when closed
       setTitle('')
       setPriority('')
       setDueDate('')
+      setIsShared(false)
+      setCreateAnother(false)
     }
   }, [isOpen])
 
@@ -78,7 +99,7 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
           title: title.trim(),
           priority: priority || null,
           dueDate: dueDate || null,
-          visibility: 'PRIVATE',
+          visibility: isShared ? 'ORG' : 'PRIVATE',
         }),
       })
 
@@ -89,9 +110,23 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
       }
 
       toast.success('Todo created successfully')
-      onClose()
-      router.refresh()
-      router.push(getTodoUrl(data.todo.id))
+      
+      if (createAnother) {
+        // Reset form and keep it open
+        setTitle('')
+        setPriority('')
+        setDueDate('')
+        setIsShared(false)
+        router.refresh()
+        // Focus title input after reset
+        setTimeout(() => {
+          titleInputRef.current?.focus()
+        }, 0)
+      } else {
+        onClose()
+        router.refresh()
+        router.push(getTodoUrl(data.todo.id))
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to create todo')
     } finally {
@@ -128,6 +163,7 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
                 <Label htmlFor="quick-launcher-title">Title *</Label>
                 <Input
                   id="quick-launcher-title"
+                  ref={titleInputRef}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="What needs to be done?"
@@ -176,10 +212,32 @@ export function QuickLauncher({ isOpen, onClose }: QuickLauncherProps) {
                 />
               </div>
 
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  Cancel
-                </Button>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="quick-launcher-shared"
+                    checked={isShared}
+                    onCheckedChange={setIsShared}
+                  />
+                  <Label htmlFor="quick-launcher-shared" className="text-sm font-normal cursor-pointer">
+                    Share with organization
+                  </Label>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="quick-launcher-createAnother"
+                    checked={createAnother}
+                    onChange={(e) => setCreateAnother(e.target.checked)}
+                    className="h-4 w-4 rounded border-2 border-input cursor-pointer"
+                  />
+                  <Label htmlFor="quick-launcher-createAnother" className="text-sm font-normal cursor-pointer">
+                    Create another
+                  </Label>
+                </div>
                 <Button type="submit" disabled={loading}>
                   {loading ? 'Creating...' : 'Create Todo'}
                 </Button>

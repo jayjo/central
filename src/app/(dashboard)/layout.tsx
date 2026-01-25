@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { getSession } from '@/lib/auth'
 import { QuickLauncherProvider } from '@/components/quick-launcher/QuickLauncherProvider'
 import { OrgSlugProvider } from '@/components/layout/OrgSlugProvider'
+import { OnboardingProvider } from '@/components/onboarding/OnboardingProvider'
 
 export default async function DashboardLayout({
   children,
@@ -24,10 +25,21 @@ export default async function DashboardLayout({
     orgSlug = user?.org?.slug || null
   }
 
+  let userCreatedAt = null
+  if (session?.user?.email) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { createdAt: true },
+    })
+    userCreatedAt = user?.createdAt || null
+  }
+
   return (
     <QuickLauncherProvider>
       <OrgSlugProvider orgSlug={orgSlug}>
-        {children}
+        <OnboardingProvider userCreatedAt={userCreatedAt}>
+          {children}
+        </OnboardingProvider>
       </OrgSlugProvider>
     </QuickLauncherProvider>
   )

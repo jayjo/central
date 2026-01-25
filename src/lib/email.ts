@@ -13,7 +13,7 @@ export async function sendEmail({
 }) {
   try {
     const { data, error } = await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'Central <noreply@yourdomain.com>',
+      from: process.env.EMAIL_FROM || 'Nuclio <noreply@nuclioapp.com>',
       to,
       subject,
       html,

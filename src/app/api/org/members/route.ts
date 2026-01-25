@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/lib/auth'
 
-export async function PATCH(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const session = await getSession()
   
   if (!session?.user?.email) {
@@ -17,17 +17,21 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
-  const body = await request.json()
-  const { name, zipCode, image } = body
-
-  const updated = await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      ...(name !== undefined && { name: name || null }),
-      ...(zipCode !== undefined && { zipCode: zipCode || null }),
-      ...(image !== undefined && { image: image || null }),
+  // Get all members of this org
+  const members = await prisma.user.findMany({
+    where: {
+      orgId: user.orgId,
+    },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+    },
+    orderBy: {
+      createdAt: 'asc',
     },
   })
 
-  return NextResponse.json({ user: updated })
+  return NextResponse.json({ members })
 }

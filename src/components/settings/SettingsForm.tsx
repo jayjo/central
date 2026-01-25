@@ -16,6 +16,7 @@ interface User {
   name: string | null
   zipCode: string | null
   password: string | null
+  image: string | null
 }
 
 interface Org {
@@ -28,6 +29,7 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
   const router = useRouter()
   const [name, setName] = useState(user.name || '')
   const [zipCode, setZipCode] = useState(user.zipCode || '')
+  const [imageUrl, setImageUrl] = useState(user.image || '')
   const [orgSlug, setOrgSlug] = useState(org.slug || '')
   const [loading, setLoading] = useState(false)
   const [slugLoading, setSlugLoading] = useState(false)
@@ -46,7 +48,28 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const hasPassword = !!user.password
   
-  const hasProfileChanges = name !== (user.name || '')
+  // Invitation state
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [invitations, setInvitations] = useState<Array<{
+    id: string
+    email: string
+    createdAt: Date
+    expires: Date
+    inviter: { name: string | null; email: string }
+  }>>([])
+  
+  // Team members state
+  const [members, setMembers] = useState<Array<{
+    id: string
+    email: string
+    name: string | null
+    createdAt: Date
+  }>>([])
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
+  const [revokingInvitationId, setRevokingInvitationId] = useState<string | null>(null)
+  
+  const hasProfileChanges = name !== (user.name || '') || imageUrl !== (user.image || '')
   const hasLocationChanges = zipCode !== (user.zipCode || '')
   const hasSlugChanges = orgSlug !== (org.slug || '')
   
@@ -106,6 +129,36 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
     }
   }, [orgSlug, org.slug])
 
+  // Load invitations and members on mount
+  useEffect(() => {
+    async function loadInvitations() {
+      try {
+        const response = await fetch('/api/org/invitations')
+        if (response.ok) {
+          const data = await response.json()
+          setInvitations(data.invitations || [])
+        }
+      } catch (error) {
+        console.error('Failed to load invitations:', error)
+      }
+    }
+    
+    async function loadMembers() {
+      try {
+        const response = await fetch('/api/org/members')
+        if (response.ok) {
+          const data = await response.json()
+          setMembers(data.members || [])
+        }
+      } catch (error) {
+        console.error('Failed to load members:', error)
+      }
+    }
+    
+    loadInvitations()
+    loadMembers()
+  }, [])
+
   // Warn before navigation if there are unsaved changes
   useUnsavedChanges({
     hasUnsavedChanges: (hasProfileChanges && !profileSaved) || (hasLocationChanges && !locationSaved) || (hasSlugChanges && !slugSaved),
@@ -120,7 +173,10 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
       const response = await fetch('/api/user', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ 
+          name: name.trim() || null,
+          image: imageUrl.trim() || null,
+        }),
       })
 
       if (!response.ok) {
@@ -237,6 +293,105 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
     }
   }
 
+  async function handleInviteSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (!inviteEmail.trim()) {
+      toast.error('Email is required')
+      return
+    }
+
+    setInviteLoading(true)
+
+    try {
+      const response = await fetch('/api/org/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail.trim() }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to send invitation')
+      }
+
+      toast.success('Invitation sent successfully')
+      setInviteEmail('')
+      // Reload invitations
+      const invitationsResponse = await fetch('/api/org/invitations')
+      if (invitationsResponse.ok) {
+        const data = await invitationsResponse.json()
+        setInvitations(data.invitations || [])
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send invitation')
+    } finally {
+      setInviteLoading(false)
+    }
+  }
+
+  async function handleRevokeInvitation(invitationId: string) {
+    if (!confirm('Are you sure you want to revoke this invitation?')) {
+      return
+    }
+
+    setRevokingInvitationId(invitationId)
+
+    try {
+      const response = await fetch(`/api/org/invitations/${invitationId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to revoke invitation')
+      }
+
+      toast.success('Invitation revoked')
+      // Reload invitations
+      const invitationsResponse = await fetch('/api/org/invitations')
+      if (invitationsResponse.ok) {
+        const data = await invitationsResponse.json()
+        setInvitations(data.invitations || [])
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to revoke invitation')
+    } finally {
+      setRevokingInvitationId(null)
+    }
+  }
+
+  async function handleRemoveMember(memberId: string, memberEmail: string) {
+    if (!confirm(`Are you sure you want to remove ${memberEmail} from the organization?`)) {
+      return
+    }
+
+    setRemovingMemberId(memberId)
+
+    try {
+      const response = await fetch(`/api/org/members/${memberId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to remove member')
+      }
+
+      toast.success('Member removed from organization')
+      // Reload members
+      const membersResponse = await fetch('/api/org/members')
+      if (membersResponse.ok) {
+        const data = await membersResponse.json()
+        setMembers(data.members || [])
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to remove member')
+    } finally {
+      setRemovingMemberId(null)
+    }
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">Settings</h1>
@@ -268,6 +423,38 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
                     setProfileSaved(false)
                   }}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="imageUrl">Profile Picture URL</Label>
+                <div className="flex items-center gap-4">
+                  {imageUrl && (
+                    <div className="relative">
+                      <img
+                        src={imageUrl}
+                        alt="Profile preview"
+                        className="w-16 h-16 rounded-full object-cover border"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <Input
+                      id="imageUrl"
+                      type="url"
+                      value={imageUrl}
+                      onChange={(e) => {
+                        setImageUrl(e.target.value)
+                        setProfileSaved(false)
+                      }}
+                      placeholder="https://example.com/avatar.jpg"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enter a URL to your profile picture. Leave empty to use initials.
+                    </p>
+                  </div>
+                </div>
               </div>
               <Button type="submit" disabled={loading}>
                 {loading ? 'Saving...' : 'Save Changes'}
@@ -350,6 +537,111 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
                 {loading ? 'Saving...' : 'Save Slug'}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Team Members */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Team Members</CardTitle>
+            <CardDescription>Manage members of your organization</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {members.length > 0 && (
+              <div className="space-y-2">
+                <Label>Current Members</Label>
+                <div className="space-y-2">
+                  {members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-3 border rounded-md"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">
+                          {member.name || member.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {member.email}
+                          {member.id === user.id && ' • You'}
+                        </p>
+                      </div>
+                      {member.id !== user.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveMember(member.id, member.email)}
+                          disabled={removingMemberId === member.id}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          {removingMemberId === member.id ? 'Removing...' : 'Remove'}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Invitations */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Team Invitations</CardTitle>
+            <CardDescription>Invite people to join your organization</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form onSubmit={handleInviteSubmit} className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="flex-1"
+                  required
+                />
+                <Button type="submit" disabled={inviteLoading}>
+                  {inviteLoading ? 'Sending...' : 'Send Invitation'}
+                </Button>
+              </div>
+            </form>
+
+            {invitations.length > 0 && (
+              <div className="space-y-2">
+                <Label>Pending Invitations</Label>
+                <div className="space-y-2">
+                  {invitations.map((invitation) => (
+                    <div
+                      key={invitation.id}
+                      className="flex items-center justify-between p-3 border rounded-md"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{invitation.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Invited by {invitation.inviter.name || invitation.inviter.email} •{' '}
+                          {new Date(invitation.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <p className="text-xs text-muted-foreground">
+                          Expires {new Date(invitation.expires).toLocaleDateString()}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRevokeInvitation(invitation.id)}
+                          disabled={revokingInvitationId === invitation.id}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          {revokingInvitationId === invitation.id ? 'Revoking...' : 'Revoke'}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

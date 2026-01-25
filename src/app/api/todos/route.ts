@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getDevUser } from '@/lib/dev-auth'
+import { getSession } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
-  // TODO: Re-enable auth after fixing code verification
-  const user = await getDevUser()
+  const session = await getSession()
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+  })
+
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  }
 
   const searchParams = request.nextUrl.searchParams
   const filter = searchParams.get('filter') || 'my'
@@ -92,8 +103,19 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // TODO: Re-enable auth after fixing code verification
-  const user = await getDevUser()
+  const session = await getSession()
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+  })
+
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  }
 
   let body
   try {
@@ -108,13 +130,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Title required' }, { status: 400 })
   }
 
+  // Parse date string (YYYY-MM-DD) to avoid timezone issues
+  // Create date at local midnight instead of UTC midnight
+  let parsedDueDate: Date | null = null
+  if (dueDate) {
+    // Use the same approach as in the PATCH route - append T00:00:00 to ensure local midnight
+    parsedDueDate = new Date(dueDate + 'T00:00:00')
+  }
+
   const todo = await prisma.todo.create({
     data: {
       title,
       description: description || null,
       ownerId: user.id,
       priority: priority || null,
-      dueDate: dueDate ? new Date(dueDate) : null,
+      dueDate: parsedDueDate,
       visibility: visibility || 'PRIVATE',
       sharedWith: sharedWithUserIds
         ? {
@@ -140,9 +170,35 @@ export async function POST(request: NextRequest) {
     },
   })
 
-  // Send notifications if shared
-  if (visibility !== 'PRIVATE' && todo.sharedWith.length > 0) {
-    // TODO: Implement email notifications
+  // Create notifications for shared todos
+  if (visibility === 'ORG' || (sharedWithUserIds && sharedWithUserIds.length > 0)) {
+    // Get all users in the org (for ORG visibility) or specific shared users
+    let usersToNotify: string[] = []
+    
+    if (visibility === 'ORG') {
+      // Get all users in the org except the owner
+      const orgUsers = await prisma.user.findMany({
+        where: {
+          orgId: user.orgId,
+          id: { not: user.id },
+        },
+        select: { id: true },
+      })
+      usersToNotify = orgUsers.map(u => u.id)
+    } else if (sharedWithUserIds && sharedWithUserIds.length > 0) {
+      usersToNotify = sharedWithUserIds
+    }
+
+    // Create notification records for each user
+    if (usersToNotify.length > 0) {
+      await prisma.todoNotification.createMany({
+        data: usersToNotify.map((userId) => ({
+          todoId: todo.id,
+          userId,
+        })),
+        skipDuplicates: true,
+      })
+    }
   }
 
   return NextResponse.json({ todo })
