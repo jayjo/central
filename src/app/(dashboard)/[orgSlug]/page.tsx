@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { TodoCalendar } from '@/components/calendar/TodoCalendar'
 import { getOrgIdFromSlug } from '@/lib/routing'
 import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth'
 
 export default async function OrgSlugDashboardPage({
   params,
@@ -18,24 +19,17 @@ export default async function OrgSlugDashboardPage({
     redirect('/')
   }
 
-  // TODO: Re-enable auth after fixing code verification
-  // Temporary: Use dev user
-  const user = await prisma.user.findFirst({
-    where: { email: 'dev@central.local' },
-  }) || await prisma.user.create({
-    data: {
-      email: 'dev@central.local',
-      name: 'Dev User',
-      orgId: 'default-org',
-    },
+  const session = await getSession()
+  if (!session?.user?.email) {
+    redirect('/login')
+  }
+  
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
   })
   
-  const session = {
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-    },
+  if (!user) {
+    redirect('/login')
   }
 
   // Verify user belongs to this org

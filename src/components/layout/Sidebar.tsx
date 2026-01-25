@@ -78,37 +78,48 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
 
   return (
     <>
-      <div className="flex flex-col h-screen w-64 border-r bg-background">
+      <div className="flex flex-col h-screen w-16 border-r bg-background">
         {/* Logo */}
-        <div className="p-4 border-b">
-          <Link href={calendarUrl}>
-            <Button variant="ghost" className="w-full justify-start font-bold text-lg">
-              Central
-            </Button>
-          </Link>
-        </div>
-
-        {/* Navigation */}
-        <TooltipProvider>
-          <nav className="flex-1 p-4 space-y-2">
+        <div className="p-2 border-b">
+          <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link href={calendarUrl} data-no-warn="true">
-                  <Button
-                    variant={pathname === calendarUrl || pathname === '/' ? 'secondary' : 'ghost'}
-                    className={cn(
-                      'w-full justify-start',
-                      (pathname === calendarUrl || pathname === '/') && 'bg-accent'
-                    )}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Calendar
+                <Link href={calendarUrl}>
+                  <Button variant="ghost" className="w-full justify-center p-2">
+                    <span className="font-bold text-lg">C</span>
                   </Button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="flex items-center gap-2">
-                  <span>Go to Calendar</span>
+                  <span>Central</span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+
+        {/* Navigation */}
+        <TooltipProvider>
+          <nav className="flex-1 p-2 space-y-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href={calendarUrl} data-no-warn="true">
+                  <Button
+                    variant={pathname === calendarUrl || pathname === '/' ? 'secondary' : 'ghost'}
+                    size="icon"
+                    className={cn(
+                      'w-full',
+                      (pathname === calendarUrl || pathname === '/') && 'bg-accent'
+                    )}
+                  >
+                    <Calendar className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="flex items-center gap-2">
+                  <span>Calendar</span>
                   <Kbd>
                     <span>C</span>
                   </Kbd>
@@ -119,48 +130,56 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
               <TooltipTrigger asChild>
                 <Button
                   variant={pathname === '/my-todos' ? 'secondary' : 'ghost'}
+                  size="icon"
                   className={cn(
-                    'w-full justify-start',
+                    'w-full',
                     pathname === '/my-todos' && 'bg-accent'
                   )}
                   onClick={() => setShowTodosMenu(!showTodosMenu)}
                 >
-                  <CheckSquare className="mr-2 h-4 w-4" />
-                  Todos
+                  <CheckSquare className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="flex items-center gap-2">
-                  <span>Open Todos</span>
+                  <span>Todos</span>
                   <Kbd>
                     <span>T</span>
                   </Kbd>
                 </div>
               </TooltipContent>
             </Tooltip>
-          <Button variant="ghost" className="w-full justify-start" disabled>
-            Nav2
-          </Button>
-          <Button variant="ghost" className="w-full justify-start" disabled>
-            Nav3
-          </Button>
           </nav>
         </TooltipProvider>
 
         {/* Profile/Settings */}
-        <div className="p-4 border-t">
-          <Link href={settingsUrl}>
-            <Button
-              variant={pathname === settingsUrl || pathname === '/settings' ? 'secondary' : 'ghost'}
-              className={cn(
-                'w-full justify-start',
-                (pathname === settingsUrl || pathname === '/settings') && 'bg-accent'
-              )}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              {userEmail || 'Settings'}
-            </Button>
-          </Link>
+        <div className="p-2 border-t">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href={settingsUrl}>
+                  <Button
+                    variant={pathname === settingsUrl || pathname === '/settings' ? 'secondary' : 'ghost'}
+                    size="icon"
+                    className={cn(
+                      'w-full',
+                      (pathname === settingsUrl || pathname === '/settings') && 'bg-accent'
+                    )}
+                  >
+                    <Settings className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="flex items-center gap-2">
+                  <span>Settings</span>
+                  <Kbd>
+                    <span>S</span>
+                  </Kbd>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 

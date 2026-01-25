@@ -248,17 +248,9 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId, highlightedTo
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    {todo.priority && (
-                      <div 
-                        className={`w-2 h-2 rounded-full ${getPriorityColor(todo.priority)}`}
-                        title={`Priority: ${todo.priority}`}
-                      />
-                    )}
-                    <h3 className={`font-medium text-sm truncate ${todo.status === 'COMPLETED' ? 'line-through opacity-60' : ''} ${isPastDue ? 'text-red-600' : ''}`}>
-                      {todo.title}
-                    </h3>
-                  </div>
+                  <h3 className={`font-medium text-sm truncate ${todo.status === 'COMPLETED' ? 'line-through opacity-60' : ''} ${isPastDue ? 'text-red-600' : ''}`}>
+                    {todo.title}
+                  </h3>
                   <p className={`text-xs mt-1 ${isPastDue ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
                     {todo.dueDate ? formatDate(new Date(todo.dueDate)) : formatDate(todo.updatedAt)}
                     {isPastDue && ' • Overdue'}
@@ -269,6 +261,14 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId, highlightedTo
                 </div>
               </div>
             </Link>
+            {todo.priority && (
+              <div className="pt-0.5 flex-shrink-0">
+                <div 
+                  className={`w-2 h-2 rounded-full ${getPriorityColor(todo.priority)}`}
+                  title={`Priority: ${todo.priority}`}
+                />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -279,7 +279,7 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId, highlightedTo
     <TooltipProvider delayDuration={300}>
       {/* Drawer */}
       <div
-        className={`fixed ${isOpen ? 'left-[264px]' : 'left-0'} top-[8px] h-[calc(100vh-16px)] w-96 bg-background border-r shadow-xl z-50 flex flex-col transition-all duration-300 ease-in-out rounded-2xl ${
+        className={`fixed ${isOpen ? 'left-[72px]' : 'left-0'} top-[8px] h-[calc(100vh-16px)] w-96 bg-background border-r shadow-xl z-50 flex flex-col transition-all duration-300 ease-in-out rounded-2xl ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

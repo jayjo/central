@@ -76,6 +76,13 @@ export function QuickLauncherProvider({ children }: { children: React.ReactNode 
         window.location.href = '/'
         return
       }
+
+      // S: Go to settings
+      if (key === 's' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        window.location.href = '/settings'
+        return
+      }
     }
 
     document.addEventListener('keydown', handleKeyDown)

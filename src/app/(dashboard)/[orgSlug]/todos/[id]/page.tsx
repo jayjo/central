@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { getOrgIdFromSlug } from '@/lib/routing'
 import { redirect } from 'next/navigation'
+import { getSession } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -29,24 +30,17 @@ export default async function OrgSlugTodoDetailPage({
     redirect(`/todos/${params.id}`)
   }
 
-  // TODO: Re-enable auth after fixing code verification
-  // Temporary: Use dev user
-  const user = await prisma.user.findFirst({
-    where: { email: 'dev@central.local' },
-  }) || await prisma.user.create({
-    data: {
-      email: 'dev@central.local',
-      name: 'Dev User',
-      orgId: 'default-org',
-    },
+  const session = await getSession()
+  if (!session?.user?.email) {
+    redirect('/login')
+  }
+  
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
   })
   
-  const session = {
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-    },
+  if (!user) {
+    redirect('/login')
   }
 
   const todo = await prisma.todo.findUnique({

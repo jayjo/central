@@ -5,24 +5,19 @@ import { SettingsForm } from '@/components/settings/SettingsForm'
 import { generateSlugFromOrgId } from '@/lib/org-slug'
 
 export default async function SettingsPage() {
-  // TODO: Re-enable auth after fixing code verification
-  // const session = await getSession()
-  // if (!session) {
-  //   redirect('/login')
-  // }
+  const session = await getSession()
+  if (!session?.user?.email) {
+    redirect('/login')
+  }
   
-  // Temporary: Use dev user
-  const user = await prisma.user.findFirst({
-    where: { email: 'dev@central.local' },
-    include: { org: true },
-  }) || await prisma.user.create({
-    data: {
-      email: 'dev@central.local',
-      name: 'Dev User',
-      orgId: 'default-org',
-    },
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
     include: { org: true },
   })
+  
+  if (!user) {
+    redirect('/login')
+  }
 
   // If user has an org slug, redirect to org-scoped settings
   if (user.org?.slug) {
