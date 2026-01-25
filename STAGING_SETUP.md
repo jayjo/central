@@ -2,16 +2,18 @@
 
 ## Step-by-Step Setup Instructions
 
-### Step 1: Create Vercel Postgres Database
+### Step 1: Create Vercel Postgres Database ✅
 
-1. Go to your Vercel dashboard
-2. Navigate to your project (or create a new one)
-3. Go to **Storage** tab → Click **Create Database** → Select **Postgres**
-4. Name it something like `nuclio-staging-db`
-5. Choose a region closest to you
-6. Click **Create**
-7. **Important**: Vercel will automatically add `POSTGRES_URL` and `POSTGRES_PRISMA_URL` environment variables
-8. Note: We'll use `POSTGRES_PRISMA_URL` as our `DATABASE_URL`
+**Database Created:** `prisma-nuclio-staging`
+
+1. Go to your Vercel dashboard → Your Project → **Storage** tab
+2. Find your database: `prisma-nuclio-staging`
+3. Click on the database to open its details
+4. Look for the **.env.local** tab or **Connection Strings** section
+5. You'll see two connection strings:
+   - `POSTGRES_URL` - Direct connection
+   - `POSTGRES_PRISMA_URL` - Prisma-optimized (use this one!)
+6. **Copy the `POSTGRES_PRISMA_URL` value** - this is what you'll use for `DATABASE_URL`
 
 ### Step 2: Set Up Custom Domain (staging.nuclioapp.com)
 
@@ -54,9 +56,10 @@ Go to your Vercel project → **Settings** → **Environment Variables** and add
 #### Required Variables:
 
 ```bash
-# Database (Vercel Postgres automatically adds POSTGRES_PRISMA_URL)
-# Use that value for DATABASE_URL
-DATABASE_URL=<value-from-POSTGRES_PRISMA_URL>
+# Database (from prisma-nuclio-staging database)
+# Get this from: Vercel → Storage → prisma-nuclio-staging → .env.local tab
+# Copy the POSTGRES_PRISMA_URL value
+DATABASE_URL=<paste-POSTGRES_PRISMA_URL-from-database>
 
 # NextAuth
 NEXTAUTH_URL=https://staging.nuclioapp.com
@@ -104,8 +107,9 @@ npm i -g vercel
 # Login
 vercel login
 
-# Link to your project
+# Link to your project (or use project ID directly)
 vercel link
+# Or specify project: vercel link --project=prj_u9ShzYLFKbqayCFHyp6PRwahmStt
 
 # Pull environment variables
 vercel env pull .env.local
@@ -115,6 +119,15 @@ npx prisma generate
 
 # Push schema to database
 npx prisma db push
+```
+
+**Quick commands using your project ID:**
+```bash
+# Pull env vars directly
+vercel env pull .env.local --project=prj_u9ShzYLFKbqayCFHyp6PRwahmStt
+
+# View project info
+vercel inspect prj_u9ShzYLFKbqayCFHyp6PRwahmStt
 ```
 
 **Option B: Using Vercel Postgres Dashboard**
@@ -151,15 +164,21 @@ DATABASE_URL=<from-POSTGRES_PRISMA_URL>
 
 # NextAuth
 NEXTAUTH_URL=https://staging.nuclioapp.com
-NEXTAUTH_SECRET=<generated-secret>
+NEXTAUTH_SECRET=XDYS2HafRIOBDfXzduVJAiov2v9Jq18xoi5TYHbePPA=
 
 # Email
 RESEND_API_KEY=<your-resend-key>
 EMAIL_FROM=noreply@nuclioapp.com
 
 # Optional
-CRON_SECRET=<generated-secret>
+CRON_SECRET=w5nICl0cReNU5SuzOGXDIuZRKGMQa1nmsAvJtqM3gLM=
 ```
+
+## Project Information
+
+- **Vercel Project ID**: `prj_u9ShzYLFKbqayCFHyp6PRwahmStt`
+- **Staging Domain**: `staging.nuclioapp.com`
+- **Database Name**: `prisma-nuclio-staging`
 
 ## Troubleshooting
 
