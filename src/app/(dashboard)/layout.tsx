@@ -13,25 +13,24 @@ export default async function DashboardLayout({
   // Most routes should redirect to org-slug routes, so we just pass through children
   // The org-slug layout will handle the sidebar
   
-  // Get user's org slug for the provider (needed for components that use org slug hooks)
-  const session = await getSession()
-  
   let orgSlug = null
-  if (session?.user?.email) {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { org: true },
-    })
-    orgSlug = user?.org?.slug || null
-  }
-
   let userCreatedAt = null
-  if (session?.user?.email) {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { createdAt: true },
-    })
-    userCreatedAt = user?.createdAt || null
+  
+  try {
+    // Get user's org slug for the provider (needed for components that use org slug hooks)
+    const session = await getSession()
+    
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        include: { org: true },
+      })
+      orgSlug = user?.org?.slug || null
+      userCreatedAt = user?.createdAt || null
+    }
+  } catch (error) {
+    console.error('Error in DashboardLayout:', error)
+    // Continue with null values - components should handle gracefully
   }
 
   return (
