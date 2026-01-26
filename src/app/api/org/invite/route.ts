@@ -4,7 +4,9 @@ import { getSession } from '@/lib/auth'
 import { Resend } from 'resend'
 import { randomBytes } from 'crypto'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || '')
+}
 
 export async function POST(request: NextRequest) {
   const session = await getSession()
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
   const inviteUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/invite/${token}`
   
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: process.env.EMAIL_FROM || 'Nuclio <noreply@nuclioapp.com>',
       to: email.trim().toLowerCase(),
       subject: `Invitation to join ${user.org.name || 'Nuclio'}`,

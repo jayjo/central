@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || '')
+}
 
 // This endpoint should be called periodically (e.g., via Vercel Cron)
 // to send batched todo notifications
@@ -109,7 +111,7 @@ export async function POST(request: NextRequest) {
     `
 
     try {
-      const result = await resend.emails.send({
+      const result = await getResend().emails.send({
         from: process.env.EMAIL_FROM || 'noreply@nuclioapp.com',
         to: user.email,
         subject: `You have ${todoCount} new shared ${todoCount === 1 ? 'todo' : 'todos'}`,

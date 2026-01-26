@@ -6,7 +6,9 @@ import { prisma } from './db'
 import { Resend } from 'resend'
 import bcrypt from 'bcryptjs'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || '')
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -76,7 +78,7 @@ export const authOptions: NextAuthOptions = {
               hasApiKey: !!process.env.RESEND_API_KEY,
               emailFromEnv: process.env.EMAIL_FROM,
             })
-            const result = await resend.emails.send({
+            const result = await getResend().emails.send({
               from: fromEmail,
               to: identifier,
               subject: 'Sign in to Nuclio',
@@ -172,7 +174,7 @@ export const authOptions: NextAuthOptions = {
           }
           
           try {
-            const result = await resend.emails.send({
+            const result = await getResend().emails.send({
               from: process.env.EMAIL_FROM || provider.from || 'noreply@nuclioapp.com',
               to: identifier,
               subject: 'Your Nuclio sign-in code',
