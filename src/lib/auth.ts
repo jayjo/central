@@ -6,7 +6,9 @@ import { prisma } from './db'
 import { Resend } from 'resend'
 import bcrypt from 'bcryptjs'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || '')
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
@@ -76,7 +78,7 @@ export const authOptions: NextAuthOptions = {
               hasApiKey: !!process.env.RESEND_API_KEY,
               emailFromEnv: process.env.EMAIL_FROM,
             })
-            const result = await resend.emails.send({
+            const result = await getResend().emails.send({
               from: fromEmail,
               to: identifier,
               subject: 'Sign in to Nuclio',
@@ -129,7 +131,6 @@ export const authOptions: NextAuthOptions = {
             // Re-throw with more context
             throw new Error(
               error?.message || 
-              result?.error?.message || 
               'Failed to send email. Please check your email address and try again.'
             )
           }
@@ -173,7 +174,7 @@ export const authOptions: NextAuthOptions = {
           }
           
           try {
-            const result = await resend.emails.send({
+            const result = await getResend().emails.send({
               from: process.env.EMAIL_FROM || provider.from || 'noreply@nuclioapp.com',
               to: identifier,
               subject: 'Your Nuclio sign-in code',
@@ -286,8 +287,12 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id
+      if (session.user && user) {
+        // Type assertion: PrismaAdapter provides user with id
+        const userWithId = user as { id: string; email?: string; name?: string | null; image?: string | null }
+        if (userWithId.id) {
+          (session.user as any).id = userWithId.id
+        }
       }
       return session
     },
@@ -295,11 +300,18 @@ export const authOptions: NextAuthOptions = {
   events: {
     async createUser({ user }) {
       // Ensure new users get assigned to default org
-      if (user.id && !user.orgId) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { orgId: 'default-org' },
+      if (user && typeof user === 'object' && 'id' in user) {
+        const userId = (user as any).id
+        const dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, orgId: true },
         })
+        if (dbUser && !dbUser.orgId) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { orgId: 'default-org' },
+          })
+        }
       }
     },
   },

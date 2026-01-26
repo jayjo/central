@@ -29,7 +29,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   // If user has a password, verify current password
-  if (dbUser.password) {
+  if (user.password) {
     if (!currentPassword) {
       return NextResponse.json(
         { error: 'Current password is required' },
@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const isValid = await bcrypt.compare(currentPassword, dbUser.password)
+    const isValid = await bcrypt.compare(currentPassword, user.password)
     if (!isValid) {
       return NextResponse.json(
         { error: 'Current password is incorrect' },

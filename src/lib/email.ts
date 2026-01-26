@@ -1,6 +1,8 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || '')
+}
 
 export async function sendEmail({
   to,
@@ -12,7 +14,7 @@ export async function sendEmail({
   html: string
 }) {
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: process.env.EMAIL_FROM || 'Nuclio <noreply@nuclioapp.com>',
       to,
       subject,

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY || '')
+}
 
 export async function POST(request: NextRequest) {
   const session = await getSession()
@@ -59,7 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email
-    const result = await resend.emails.send(emailData)
+    const result = await getResend().emails.send(emailData)
 
     if (result.error) {
       console.error('Failed to send feedback email:', result.error)

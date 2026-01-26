@@ -66,8 +66,8 @@ export async function POST(request: NextRequest) {
 
     // Return the full token so NextAuth can complete the sign-in
     return NextResponse.json({
-      token: matchingToken.token,
-      email: matchingToken.identifier,
+      token: verificationToken.token,
+      email: verificationToken.identifier,
     })
   } catch (error: any) {
     console.error('Code verification error:', error)
