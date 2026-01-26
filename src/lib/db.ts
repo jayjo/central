@@ -12,6 +12,14 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
+// Test database connection on startup
+if (typeof window === 'undefined') {
+  prisma.$connect().catch((error) => {
+    console.error('Failed to connect to database:', error)
+    console.error('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'NOT SET')
+  })
+}
+
 export async function getTodayMessage() {
   try {
     const today = new Date()
