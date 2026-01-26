@@ -129,7 +129,6 @@ export const authOptions: NextAuthOptions = {
             // Re-throw with more context
             throw new Error(
               error?.message || 
-              result?.error?.message || 
               'Failed to send email. Please check your email address and try again.'
             )
           }
@@ -286,8 +285,12 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id
+      if (session.user && user) {
+        // Type assertion: PrismaAdapter provides user with id
+        const userWithId = user as { id: string; email?: string; name?: string | null; image?: string | null }
+        if (userWithId.id) {
+          (session.user as any).id = userWithId.id
+        }
       }
       return session
     },
@@ -295,11 +298,18 @@ export const authOptions: NextAuthOptions = {
   events: {
     async createUser({ user }) {
       // Ensure new users get assigned to default org
-      if (user.id && !user.orgId) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { orgId: 'default-org' },
+      if (user && typeof user === 'object' && 'id' in user) {
+        const userId = (user as any).id
+        const dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, orgId: true },
         })
+        if (dbUser && !dbUser.orgId) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { orgId: 'default-org' },
+          })
+        }
       }
     },
   },

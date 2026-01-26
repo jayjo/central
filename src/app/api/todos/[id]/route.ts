@@ -14,6 +14,7 @@ export async function GET(
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
+    include: { org: true },
   })
 
   if (!user) {
@@ -28,6 +29,9 @@ export async function GET(
           id: true,
           name: true,
           email: true,
+        },
+        include: {
+          org: true,
         },
       },
       sharedWith: {
@@ -62,7 +66,7 @@ export async function GET(
   const hasAccess =
     todo.ownerId === user.id ||
     todo.sharedWith.some((u) => u.id === user.id) ||
-    (todo.visibility === 'ORG' && todo.owner.orgId === user.orgId)
+    (todo.visibility === 'ORG' && todo.owner.org?.id === user.org?.id)
 
   if (!hasAccess) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

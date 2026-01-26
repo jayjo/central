@@ -19,12 +19,19 @@ interface Todo {
   title: string
   status: string
   ownerId: string
+  priority: string | null
   dueDate: Date | null
   updatedAt: Date
+  visibility: string
   owner: {
+    id: string
     email: string
     name: string | null
+    image: string | null
   }
+  sharedWith: Array<{
+    id: string
+  }>
   _count: {
     messages: number
   }
