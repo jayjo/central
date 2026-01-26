@@ -37,7 +37,12 @@ export default async function OrgSlugDashboardPage({
     redirect('/')
   }
 
-  const message = await getTodayMessage()
+  let message = null
+  try {
+    message = await getTodayMessage()
+  } catch (error) {
+    console.error('Error fetching message:', error)
+  }
 
   // Get all todos with due dates for the calendar, scoped to this org
   // Include: user's todos, todos shared with user, and org-visible todos

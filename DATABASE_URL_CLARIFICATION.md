@@ -24,7 +24,7 @@ In Vercel, you'll see these variables for your `prisma-nuclio-staging` database:
 
 Example:
 ```
-DATABASE_URL=postgres://c47b3130811dac44db8020224923ba02e29ce7aa947b079a4881aee9d5c1e074:sk_evHxCeVZ25L2vHeuN2Llf@db.prisma.io:5432/postgres?sslmode=require
+DATABASE_URL=(what is listed in POSTGRES_DATABASE_URL in Vercel Project Storage)
 ```
 
 ## In Vercel Environment Variables
