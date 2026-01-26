@@ -54,6 +54,8 @@ model User {
   aiInteractions AIInteraction[]
   accounts       Account[]
   sessions       Session[]
+  sentInvitations OrgInvitation[] @relation("Inviter")
+  todoNotifications TodoNotification[] @relation("TodoNotifications")
 }
 
 model VerificationToken {
@@ -71,6 +73,22 @@ model Org {
   slug      String?  @unique
   createdAt DateTime @default(now())
   users     User[]
+  invitations OrgInvitation[]
+}
+
+model OrgInvitation {
+  id        String   @id @default(cuid())
+  email     String
+  orgId     String
+  org       Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  invitedBy String
+  inviter   User     @relation("Inviter", fields: [invitedBy], references: [id])
+  token     String   @unique
+  expires   DateTime
+  accepted  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([email, orgId])
 }
 
 model Todo {
@@ -90,6 +108,7 @@ model Todo {
   messages    Message[]
   aiInteractionId String?
   aiInteraction   AIInteraction? @relation(fields: [aiInteractionId], references: [id])
+  notifications TodoNotification[]
 }
 
 model Message {
@@ -148,4 +167,18 @@ enum AIStatus {
   PROCESSING
   COMPLETED
   ERROR
+}
+
+model TodoNotification {
+  id        String   @id @default(cuid())
+  todoId   String
+  todo     Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation("TodoNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  sent     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  sentAt    DateTime?
+
+  @@unique([todoId, userId])
+  @@index([userId, sent, createdAt])
 }

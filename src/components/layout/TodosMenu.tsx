@@ -14,6 +14,7 @@ import { useQuickLauncher } from '@/components/quick-launcher/QuickLauncherProvi
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
 import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
+import { Avatar } from '@/components/ui/avatar'
 
 interface Todo {
   id: string
@@ -23,10 +24,16 @@ interface Todo {
   priority: string | null
   dueDate: Date | null
   updatedAt: Date
+  visibility: string
   owner: {
+    id: string
     email: string
     name: string | null
+    image: string | null
   }
+  sharedWith: Array<{
+    id: string
+  }>
   _count: {
     messages: number
   }
@@ -241,6 +248,13 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId, highlightedTo
                 }}
               />
             </div>
+            <Avatar
+              src={todo.owner.image}
+              name={todo.owner.name}
+              alt={todo.owner.name || todo.owner.email}
+              isShared={todo.visibility === 'ORG' || todo.sharedWith.length > 0}
+              className="shrink-0"
+            />
             <Link
               href={getTodoUrl(todo.id)}
               className="flex-1 min-w-0"

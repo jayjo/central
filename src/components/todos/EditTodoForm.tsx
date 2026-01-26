@@ -78,9 +78,11 @@ export function EditTodoForm({ todo, onCancel, onSuccess }: EditTodoFormProps) {
   useEffect(() => {
     // Focus title input when form opens
     const timer = setTimeout(() => {
-      const input = document.getElementById('edit-todo-title')
+      const input = document.getElementById('edit-todo-title') as HTMLInputElement
       input?.focus()
-      input?.select()
+      if (input && 'select' in input && typeof input.select === 'function') {
+        input.select()
+      }
     }, 100)
     return () => clearTimeout(timer)
   }, [])

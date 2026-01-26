@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getDevUser } from '@/lib/dev-auth'
+import { getSession } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // TODO: Re-enable auth after fixing code verification
-  const user = await getDevUser()
+  const session = await getSession()
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: { org: true },
+  })
+
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  }
 
   const todo = await prisma.todo.findUnique({
     where: { id: params.id },
@@ -17,6 +29,9 @@ export async function GET(
           id: true,
           name: true,
           email: true,
+        },
+        include: {
+          org: true,
         },
       },
       sharedWith: {
@@ -51,7 +66,7 @@ export async function GET(
   const hasAccess =
     todo.ownerId === user.id ||
     todo.sharedWith.some((u) => u.id === user.id) ||
-    (todo.visibility === 'ORG' && todo.owner.orgId === user.orgId)
+    (todo.visibility === 'ORG' && todo.owner.org?.id === user.org?.id)
 
   if (!hasAccess) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -64,8 +79,19 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // TODO: Re-enable auth after fixing code verification
-  const user = await getDevUser()
+  const session = await getSession()
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+  })
+
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  }
 
   const todo = await prisma.todo.findUnique({
     where: { id: params.id },
@@ -107,7 +133,22 @@ export async function PATCH(
         ...(description !== undefined && { description: processedDescription }),
         ...(status && { status }),
         ...(priority !== undefined && { priority }),
-        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(dueDate !== undefined && {
+          dueDate: dueDate
+            ? (() => {
+                // Parse date string (YYYY-MM-DD) to avoid timezone issues
+                const dateMatch = dueDate.match(/^(\d{4})-(\d{2})-(\d{2})/)
+                if (dateMatch) {
+                  const [, year, month, day] = dateMatch
+                  // Create date in local timezone at midnight
+                  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0, 0)
+                } else {
+                  // Fallback to regular Date parsing if format is different
+                  return new Date(dueDate)
+                }
+              })()
+            : null,
+        }),
         ...(visibility && { visibility }),
         ...(sharedWithUserIds && {
           sharedWith: {

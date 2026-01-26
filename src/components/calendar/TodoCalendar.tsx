@@ -11,8 +11,10 @@ import Link from 'next/link'
 import { TodoCheckbox } from '@/components/todos/TodoCheckbox'
 import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
 import type { TodoWithRelations } from '@/types'
+import { Avatar } from '@/components/ui/avatar'
 
 type ViewMode = 'day' | 'week' | 'month'
+type FilterMode = 'all' | 'shared' | 'mine'
 
 interface TodoCalendarProps {
   todos: any[]
@@ -22,6 +24,7 @@ interface TodoCalendarProps {
 export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<ViewMode>('month')
+  const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const orgSlug = useOrgSlug()
   
   const getTodoUrl = (todoId: string, highlight: boolean = false) => {
@@ -110,24 +113,37 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
     }
   }
 
-  const getTodosForDate = (date: Date) => {
+  const getFilteredTodos = () => {
     return todos.filter((todo) => {
+      if (filterMode === 'mine') {
+        return todo.ownerId === currentUserId
+      } else if (filterMode === 'shared') {
+        return todo.visibility === 'ORG' || (todo.sharedWith && todo.sharedWith.length > 0) || todo.ownerId !== currentUserId
+      }
+      // 'all' - no filter
+      return true
+    })
+  }
+
+  const getTodosForDate = (date: Date) => {
+    return getFilteredTodos().filter((todo) => {
       if (!todo.dueDate) return false
       return isSameDay(new Date(todo.dueDate), date)
     })
   }
 
   const getTodosForPeriod = () => {
+    const filtered = getFilteredTodos()
     if (viewMode === 'day') {
       return getTodosForDate(currentDate)
     } else if (viewMode === 'week') {
-      return todos.filter((todo) => {
+      return filtered.filter((todo) => {
         if (!todo.dueDate) return false
         const todoDate = new Date(todo.dueDate)
         return isSameWeek(todoDate, currentDate, { weekStartsOn: 0 })
       })
     } else {
-      return todos.filter((todo) => {
+      return filtered.filter((todo) => {
         if (!todo.dueDate) return false
         const todoDate = new Date(todo.dueDate)
         return isSameMonth(todoDate, currentDate)
@@ -176,7 +192,7 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
         <h2 className="text-2xl font-bold">
           {getDateLabel()}
         </h2>
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-4">
           <TooltipProvider>
             <div className="flex gap-1 border rounded-md">
               <Tooltip>
@@ -241,6 +257,55 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
               </Tooltip>
             </div>
           </TooltipProvider>
+          <TooltipProvider>
+            <div className="flex gap-1 border rounded-md">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={filterMode === 'all' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setFilterMode('all')}
+                    className="rounded-r-none"
+                  >
+                    All
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Show all todos</span>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={filterMode === 'shared' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setFilterMode('shared')}
+                    className="rounded-none"
+                  >
+                    Shared
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Show shared todos only</span>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={filterMode === 'mine' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setFilterMode('mine')}
+                    className="rounded-l-none"
+                  >
+                    Mine
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Show my todos only</span>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         </div>
         <div className="flex gap-2 justify-end">
           <Button variant="outline" size="icon" onClick={navigatePrevious}>
@@ -276,6 +341,13 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
                             size="md"
                           />
                         </div>
+                        <Avatar
+                          src={todo.owner?.image}
+                          name={todo.owner?.name}
+                          alt={todo.owner?.name || todo.owner?.email}
+                          isShared={todo.visibility === 'ORG' || (todo.sharedWith && todo.sharedWith.length > 0)}
+                          className="shrink-0"
+                        />
                         <div className="flex-1 min-w-0">
                           <Link
                             href={getTodoUrl(todo.id, true)}
@@ -388,6 +460,13 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
                           isOwner={todo.ownerId === currentUserId}
                           size="sm"
                         />
+                        <Avatar
+                          src={todo.owner?.image}
+                          name={todo.owner?.name}
+                          alt={todo.owner?.name || todo.owner?.email}
+                          isShared={todo.visibility === 'ORG' || (todo.sharedWith && todo.sharedWith.length > 0)}
+                          className="w-6 h-6 shrink-0"
+                        />
                         <Link
                           href={getTodoUrl(todo.id, true)}
                           className="flex-1 min-w-0 break-words"
@@ -462,6 +541,13 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
                             currentStatus={todo.status}
                             isOwner={todo.ownerId === currentUserId}
                             size="sm"
+                          />
+                          <Avatar
+                            src={todo.owner?.image}
+                            name={todo.owner?.name}
+                            alt={todo.owner?.name || todo.owner?.email}
+                            isShared={todo.visibility === 'ORG' || (todo.sharedWith && todo.sharedWith.length > 0)}
+                            className="w-5 h-5 shrink-0"
                           />
                           <Link
                             href={getTodoUrl(todo.id, true)}

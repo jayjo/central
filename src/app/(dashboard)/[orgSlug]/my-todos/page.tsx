@@ -64,6 +64,7 @@ export default async function OrgSlugMyTodosPage({
           id: true,
           name: true,
           email: true,
+          image: true,
         },
       },
       sharedWith: {
@@ -121,7 +122,7 @@ export default async function OrgSlugMyTodosPage({
       </div>
 
       {searchParams.new ? (
-        <div className="mb-6">
+        <div className="mb-6" key="create-todo-form">
           <CreateTodoForm />
         </div>
       ) : null}

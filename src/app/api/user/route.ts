@@ -18,13 +18,14 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { name, zipCode } = body
+  const { name, zipCode, image } = body
 
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: {
       ...(name !== undefined && { name: name || null }),
       ...(zipCode !== undefined && { zipCode: zipCode || null }),
+      ...(image !== undefined && { image: image || null }),
     },
   })
 

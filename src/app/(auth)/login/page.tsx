@@ -3,10 +3,15 @@ import { redirect } from 'next/navigation'
 import { SignInForm } from '@/components/auth/SignInForm'
 
 export default async function LoginPage() {
-  const session = await getSession()
+  try {
+    const session = await getSession()
 
-  if (session) {
-    redirect('/')
+    if (session) {
+      redirect('/')
+    }
+  } catch (error) {
+    console.error('Error in LoginPage:', error)
+    // Continue to show login form even if session check fails
   }
 
   return (

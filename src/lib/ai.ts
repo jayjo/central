@@ -1,8 +1,10 @@
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+function getOpenAI() {
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY || '',
+  })
+}
 
 export interface AIExtractedTodo {
   title: string
@@ -29,7 +31,7 @@ Text: "${text}"
 
 Return only valid JSON in this format: {"todos": [{"title": "...", "priority": "MEDIUM", "dueDate": "2024-01-15"}]}`
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [{ role: 'user', content: prompt }],
     response_format: { type: 'json_object' },
@@ -60,7 +62,7 @@ Request: "${request}"${contextStr}
 
 Return JSON: {"summary": "...", "suggestedTodos": [...], "suggestedActions": [...]}`
 
-  const completion = await openai.chat.completions.create({
+  const completion = await getOpenAI().chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [{ role: 'user', content: prompt }],
     response_format: { type: 'json_object' },
