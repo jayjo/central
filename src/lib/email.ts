@@ -15,7 +15,7 @@ export async function sendEmail({
 }) {
   try {
     const { data, error } = await getResend().emails.send({
-      from: process.env.EMAIL_FROM || 'Nuclio <noreply@nuclioapp.com>',
+      from: process.env.EMAIL_FROM || 'Nuclio <noreply@notifications.nuclioapp.com>',
       to,
       subject,
       html,

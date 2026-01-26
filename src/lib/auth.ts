@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
           pass: process.env.RESEND_API_KEY || '',
         },
       },
-      from: process.env.EMAIL_FROM || 'noreply@nuclioapp.com',
+      from: process.env.EMAIL_FROM || 'noreply@notifications.nuclioapp.com',
       // Support both magic link and code-based auth
       sendVerificationRequest: async ({ identifier, token, url, provider }) => {
         // Log email attempt for debugging
@@ -70,8 +70,14 @@ export const authOptions: NextAuthOptions = {
         if (isMagicLink) {
           // Send magic link email
           try {
+            // Validate environment variables
+            if (!process.env.RESEND_API_KEY) {
+              console.error('RESEND_API_KEY is not set')
+              throw new Error('Email service is not configured. Please contact support.')
+            }
+            
             // Use verified domain email - must be from nuclioapp.com
-            const fromEmail = process.env.EMAIL_FROM || provider.from || 'noreply@nuclioapp.com'
+            const fromEmail = process.env.EMAIL_FROM || provider.from || 'noreply@notifications.nuclioapp.com'
             console.log('Attempting to send magic link:', {
               from: fromEmail,
               to: identifier,
@@ -136,6 +142,12 @@ export const authOptions: NextAuthOptions = {
           }
         } else {
           // Send code-based email (existing behavior)
+          // Validate environment variables
+          if (!process.env.RESEND_API_KEY) {
+            console.error('RESEND_API_KEY is not set')
+            throw new Error('Email service is not configured. Please contact support.')
+          }
+          
           const code = token.slice(0, 6).toUpperCase()
           
           console.log('Sending verification email:', {
@@ -175,7 +187,7 @@ export const authOptions: NextAuthOptions = {
           
           try {
             const result = await getResend().emails.send({
-              from: process.env.EMAIL_FROM || provider.from || 'noreply@nuclioapp.com',
+              from: process.env.EMAIL_FROM || provider.from || 'noreply@notifications.nuclioapp.com',
               to: identifier,
               subject: 'Your Nuclio sign-in code',
               html: `

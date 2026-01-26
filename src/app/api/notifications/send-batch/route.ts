@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const result = await getResend().emails.send({
-        from: process.env.EMAIL_FROM || 'noreply@nuclioapp.com',
+        from: process.env.EMAIL_FROM || 'noreply@notifications.nuclioapp.com',
         to: user.email,
         subject: `You have ${todoCount} new shared ${todoCount === 1 ? 'todo' : 'todos'}`,
         html: emailHtml,
