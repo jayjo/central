@@ -28,23 +28,11 @@ function createSafeAdapter(): Adapter {
         throw error
       }
     },
-    async deleteVerificationToken(identifier_token: { identifier: string; token: string }) {
-      try {
-        return await baseAdapter.deleteVerificationToken!(identifier_token)
-      } catch (error: any) {
-        // Ignore "record not found" errors - token might already be deleted
-        if (error?.code === 'P2025' || error?.message?.includes('Record to delete does not exist')) {
-          return null
-        }
-        throw error
-      }
-    },
   } as Adapter
 }
 
 export const authOptions: NextAuthOptions = {
   adapter: createSafeAdapter(),
-  trustHost: true, // Allow any host for callback URLs (needed for magic links)
   // Explicitly set the base URL to avoid callback URL validation issues
   ...(process.env.NEXTAUTH_URL && { 
     url: process.env.NEXTAUTH_URL 
