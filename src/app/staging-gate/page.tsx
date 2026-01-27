@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-export default function StagingGatePage() {
+function StagingGateForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [password, setPassword] = useState('')
@@ -44,6 +44,40 @@ export default function StagingGatePage() {
   }
 
   return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="password">Access Password</Label>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Enter staging access password"
+          required
+          autoFocus
+          disabled={isLoading}
+        />
+      </div>
+      
+      {error && (
+        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+          {error}
+        </div>
+      )}
+      
+      <Button 
+        type="submit" 
+        className="w-full"
+        disabled={isLoading}
+      >
+        {isLoading ? 'Verifying...' : 'Continue'}
+      </Button>
+    </form>
+  )
+}
+
+export default function StagingGatePage() {
+  return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md space-y-8 p-8">
         <div className="text-center">
@@ -53,35 +87,14 @@ export default function StagingGatePage() {
           </p>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="password">Access Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter staging access password"
-              required
-              autoFocus
-              disabled={isLoading}
-            />
+        <Suspense fallback={
+          <div className="space-y-4">
+            <div className="h-10 bg-muted animate-pulse rounded-md" />
+            <div className="h-10 bg-muted animate-pulse rounded-md" />
           </div>
-          
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-              {error}
-            </div>
-          )}
-          
-          <Button 
-            type="submit" 
-            className="w-full"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Verifying...' : 'Continue'}
-          </Button>
-        </form>
+        }>
+          <StagingGateForm />
+        </Suspense>
       </div>
     </div>
   )
