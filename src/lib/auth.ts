@@ -156,11 +156,6 @@ export const authOptions: NextAuthOptions = {
             }
           } catch (error: any) {
             // Error sending magic link email
-              errorName: error?.name,
-              errorStack: error?.stack,
-              identifier,
-              from: provider.from,
-            })
             // Re-throw with more context
             throw new Error(
               error?.message || 
@@ -237,7 +232,6 @@ export const authOptions: NextAuthOptions = {
             }
           } catch (error: any) {
             // Error sending verification code email
-            })
             throw new Error(
               error?.message || 
               'Failed to send email. Please check your email address and try again.'

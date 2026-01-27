@@ -171,8 +171,8 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
           </nav>
         </TooltipProvider>
 
-        {/* Profile/Settings */}
-        <div className="p-2 border-t space-y-2">
+        {/* Help & Feedback */}
+        <div className="p-2 space-y-2">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -211,21 +211,26 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+        </div>
+
+        {/* Settings */}
+        <div className="p-2 border-t">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Link href={settingsUrl}>
-                  <Button
-                    variant={pathname === settingsUrl || pathname === '/settings' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    className={cn(
-                      'w-full',
-                      (pathname === settingsUrl || pathname === '/settings') && 'bg-accent'
-                    )}
-                  >
+                <Button
+                  asChild
+                  variant={pathname === settingsUrl || pathname === '/settings' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className={cn(
+                    'w-full',
+                    (pathname === settingsUrl || pathname === '/settings') && 'bg-accent'
+                  )}
+                >
+                  <Link href={settingsUrl}>
                     <Settings className="h-5 w-5" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </TooltipTrigger>
               <TooltipContent>
                 <div className="flex items-center gap-2">
