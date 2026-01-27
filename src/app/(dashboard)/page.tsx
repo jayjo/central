@@ -33,7 +33,7 @@ export default async function DashboardPage() {
         where: { id: user.id },
         data: { orgId: newOrg.id },
       })
-      return <RedirectToOrg orgSlug={newOrg.slug} />
+      return <RedirectToOrg orgSlug={newOrg.slug!} />
     }
 
     // Ensure org has a slug
@@ -43,11 +43,11 @@ export default async function DashboardPage() {
         where: { id: user.org.id },
         data: { slug: user.org.id }, // Use org ID as slug
       })
-      return <RedirectToOrg orgSlug={updatedOrg.slug} />
+      return <RedirectToOrg orgSlug={updatedOrg.slug!} />
     }
 
     // Use client-side redirect to ensure session cookie is available
-    return <RedirectToOrg orgSlug={user.org.slug} />
+    return <RedirectToOrg orgSlug={user.org.slug!} />
   } catch (error) {
     redirect('/login')
   }
