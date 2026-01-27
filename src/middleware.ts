@@ -12,22 +12,25 @@ export function middleware(request: NextRequest) {
 
   // Check if user has staging access cookie
   const stagingAccess = request.cookies.get('staging-access')
+  const pathname = request.nextUrl.pathname
   
   // Allow access to staging gate page and API routes needed for authentication
-  const pathname = request.nextUrl.pathname
   const allowedPaths = [
     '/staging-gate',
     '/api/staging-access',
     '/api/auth',
-    '/_next',
-    '/favicon.ico',
   ]
   
   const isAllowedPath = allowedPaths.some(path => 
     pathname === path || pathname.startsWith(path)
   )
   
-  if (isAllowedPath) {
+  // Also allow static assets and Next.js internals
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon.ico') ||
+    isAllowedPath
+  ) {
     return NextResponse.next()
   }
   
@@ -36,7 +39,7 @@ export function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/staging-gate'
     // Preserve the original destination
-    if (pathname !== '/') {
+    if (pathname !== '/' && pathname !== '/staging-gate') {
       url.searchParams.set('redirect', pathname)
     }
     return NextResponse.redirect(url)
