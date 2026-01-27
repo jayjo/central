@@ -30,21 +30,23 @@ export function SignInForm() {
     setError('')
 
     try {
-      // Pass callbackUrl to make it a magic link instead of code
+      // Don't pass callbackUrl - let NextAuth handle it, we'll redirect in the redirect callback
       const result = await signIn('email', {
         email,
         redirect: false,
-        callbackUrl: window.location.origin + '/',
       })
       
       if (result?.error) {
-        console.error('Sign in result error:', result.error)
         // Map NextAuth error codes to user-friendly messages
         let errorMessage = 'Failed to send email. Please try again.'
         if (result.error === 'EmailSignin') {
-          errorMessage = 'Failed to send email. Please check your email address and try again. If the problem persists, check your Resend configuration.'
+          errorMessage = 'Failed to send email. Please check your email address and try again. If the problem persists, check your Resend configuration and verify the domain is set up correctly.'
+        } else if (result.error === 'Configuration') {
+          errorMessage = 'Server configuration error. Please contact support.'
         } else if (result.error.includes('email') || result.error.includes('Email')) {
           errorMessage = result.error
+        } else {
+          errorMessage = `Error: ${result.error}. Please try again or contact support.`
         }
         setError(errorMessage)
         setLoading(false)
@@ -52,8 +54,7 @@ export function SignInForm() {
         setSubmitted(true)
       }
     } catch (error: any) {
-      console.error('Sign in error:', error)
-      setError(error?.message || 'An error occurred. Please try again.')
+      setError('An error occurred. Please try again.')
       setLoading(false)
     }
   }
@@ -74,10 +75,11 @@ export function SignInForm() {
         setError('Invalid email or password')
         setLoading(false)
       } else if (result?.ok) {
+        // Session is set, now redirect - use window.location for full page reload
+        // This ensures cookies are available
         window.location.href = '/'
       }
     } catch (error) {
-      console.error('Sign in error:', error)
       setError('An error occurred. Please try again.')
       setLoading(false)
     }

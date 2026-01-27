@@ -1,10 +1,12 @@
-import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { redirect } from 'next/navigation'
+import { RedirectToOrg } from '@/components/auth/RedirectToOrg'
 
 export default async function DashboardPage() {
   try {
     const session = await getSession()
+    
     if (!session?.user?.email) {
       redirect('/login')
     }
@@ -18,15 +20,35 @@ export default async function DashboardPage() {
       redirect('/login')
     }
 
-    // If user has an org slug, redirect to org-scoped route
-    if (user.org?.slug) {
-      redirect(`/${user.org.slug}`)
+    // Ensure user has an org
+    if (!user.org) {
+      // Create a new org for this user
+      const newOrg = await prisma.org.create({
+        data: {
+          name: `${user.name || user.email}'s Organization`,
+          slug: user.id, // Use user ID as slug for uniqueness
+        },
+      })
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { orgId: newOrg.id },
+      })
+      return <RedirectToOrg orgSlug={newOrg.slug} />
     }
 
-    // If no org slug, redirect to settings to set one up
-    redirect('/settings')
+    // Ensure org has a slug
+    if (!user.org.slug) {
+      // Generate slug from org ID
+      const updatedOrg = await prisma.org.update({
+        where: { id: user.org.id },
+        data: { slug: user.org.id }, // Use org ID as slug
+      })
+      return <RedirectToOrg orgSlug={updatedOrg.slug} />
+    }
+
+    // Use client-side redirect to ensure session cookie is available
+    return <RedirectToOrg orgSlug={user.org.slug} />
   } catch (error) {
-    console.error('Error in DashboardPage:', error)
     redirect('/login')
   }
 }

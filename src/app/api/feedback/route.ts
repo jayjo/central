@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare email data
     const emailData: any = {
-      from: process.env.EMAIL_FROM || 'Nuclio <noreply@nuclioapp.com>',
+      from: process.env.EMAIL_FROM || 'Nuclio <noreply@notifications.nuclioapp.com>',
       to: 'jeff@jayjodesign.com',
       subject: `Feedback from Nuclio - ${userEmail}`,
       html: emailHtml,

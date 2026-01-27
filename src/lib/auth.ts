@@ -5,13 +5,50 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from './db'
 import { Resend } from 'resend'
 import bcrypt from 'bcryptjs'
+import type { Adapter } from 'next-auth/adapters'
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY || '')
 }
 
+// Wrap PrismaAdapter to handle delete errors gracefully
+function createSafeAdapter(): Adapter {
+  const baseAdapter = PrismaAdapter(prisma) as Adapter
+  
+  return {
+    ...baseAdapter,
+    async deleteSession(sessionToken: string) {
+      try {
+        return await baseAdapter.deleteSession!(sessionToken)
+      } catch (error: any) {
+        // Ignore "record not found" errors - session might already be deleted
+        if (error?.code === 'P2025' || error?.message?.includes('Record to delete does not exist')) {
+          return null
+        }
+        throw error
+      }
+    },
+    async deleteVerificationToken(identifier_token: { identifier: string; token: string }) {
+      try {
+        return await baseAdapter.deleteVerificationToken!(identifier_token)
+      } catch (error: any) {
+        // Ignore "record not found" errors - token might already be deleted
+        if (error?.code === 'P2025' || error?.message?.includes('Record to delete does not exist')) {
+          return null
+        }
+        throw error
+      }
+    },
+  } as Adapter
+}
+
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as any,
+  adapter: createSafeAdapter(),
+  trustHost: true, // Allow any host for callback URLs (needed for magic links)
+  // Explicitly set the base URL to avoid callback URL validation issues
+  ...(process.env.NEXTAUTH_URL && { 
+    url: process.env.NEXTAUTH_URL 
+  }),
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -54,30 +91,37 @@ export const authOptions: NextAuthOptions = {
           pass: process.env.RESEND_API_KEY || '',
         },
       },
-      from: process.env.EMAIL_FROM || 'noreply@nuclioapp.com',
+      from: process.env.EMAIL_FROM || 'noreply@notifications.nuclioapp.com',
       // Support both magic link and code-based auth
       sendVerificationRequest: async ({ identifier, token, url, provider }) => {
-        // Log email attempt for debugging
-        console.log('Sending verification email:', {
-          identifier,
-          from: provider.from,
-          isMagicLink: url && (url.includes('callbackUrl') || url.startsWith('http')),
-        })
-        // Check if this is a magic link request (url contains the full callback URL)
-        // Magic links have the full URL, code-based just uses the token
-        const isMagicLink = url && (url.includes('callbackUrl') || url.startsWith('http'))
+        // Check if this is a magic link request
+        // Magic links have the full URL with /api/auth/callback/email, code-based uses /verify
+        const isMagicLink = url && (url.includes('/api/auth/callback/email') || url.includes('callbackUrl') || url.startsWith('http'))
         
         if (isMagicLink) {
-          // Send magic link email
+          // Reconstruct the URL without the callbackUrl parameter to avoid encoding issues
+          // NextAuth will use the default redirect from our redirect callback
           try {
-            // Use verified domain email - must be from nuclioapp.com
-            const fromEmail = process.env.EMAIL_FROM || provider.from || 'noreply@nuclioapp.com'
-            console.log('Attempting to send magic link:', {
-              from: fromEmail,
-              to: identifier,
-              hasApiKey: !!process.env.RESEND_API_KEY,
-              emailFromEnv: process.env.EMAIL_FROM,
-            })
+            const urlObj = new URL(url)
+            // Remove the callbackUrl parameter - our redirect callback will handle the redirect
+            urlObj.searchParams.delete('callbackUrl')
+            
+            // Remove any existing email parameter to avoid double-encoding
+            urlObj.searchParams.delete('email')
+            
+            // Set email parameter using the raw identifier (URLSearchParams will encode it once)
+            // This ensures it's only encoded once, not double-encoded by email clients
+            urlObj.searchParams.set('email', identifier)
+            
+            const cleanUrl = urlObj.toString()
+            
+            // Validate environment variables
+            if (!process.env.RESEND_API_KEY) {
+              throw new Error('Email service is not configured. Please contact support.')
+            }
+            
+            // Use verified domain email - must be from notifications.nuclioapp.com
+            const fromEmail = process.env.EMAIL_FROM || provider.from || 'noreply@notifications.nuclioapp.com'
             const result = await getResend().emails.send({
               from: fromEmail,
               to: identifier,
@@ -93,10 +137,10 @@ export const authOptions: NextAuthOptions = {
                     <h2 style="color: #2563eb;">Sign in to Nuclio</h2>
                     <p>Click the button below to sign in to your account:</p>
                     <div style="text-align: center; margin: 30px 0;">
-                      <a href="${url}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">Sign In</a>
+                      <a href="${cleanUrl}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;">Sign In</a>
                     </div>
                     <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
-                    <p style="color: #666; font-size: 12px; word-break: break-all;">${url}</p>
+                    <p style="color: #666; font-size: 12px; word-break: break-all;">${cleanUrl}</p>
                     <p style="color: #666; font-size: 14px; margin-top: 30px;">This link will expire in 24 hours.</p>
                     <p style="color: #666; font-size: 12px; margin-top: 30px;">If you didn't request this link, you can safely ignore this email.</p>
                   </body>
@@ -105,24 +149,13 @@ export const authOptions: NextAuthOptions = {
             })
             
             if (result.error) {
-              const errorDetails = {
-                error: result.error,
-                errorMessage: typeof result.error === 'string' ? result.error : result.error?.message,
-                errorName: result.error?.name,
-                errorType: typeof result.error,
-                identifier,
-                from: provider.from,
-              }
-              console.error('Resend API error (magic link):', errorDetails)
               const errorMsg = typeof result.error === 'string' 
                 ? result.error 
                 : result.error?.message || JSON.stringify(result.error) || 'Failed to send email'
               throw new Error(errorMsg)
             }
           } catch (error: any) {
-            console.error('Failed to send magic link email:', {
-              error,
-              errorMessage: error?.message,
+            // Error sending magic link email
               errorName: error?.name,
               errorStack: error?.stack,
               identifier,
@@ -136,14 +169,12 @@ export const authOptions: NextAuthOptions = {
           }
         } else {
           // Send code-based email (existing behavior)
-          const code = token.slice(0, 6).toUpperCase()
+          // Validate environment variables
+          if (!process.env.RESEND_API_KEY) {
+            throw new Error('Email service is not configured. Please contact support.')
+          }
           
-          console.log('Sending verification email:', {
-            email: identifier,
-            fullToken: token,
-            code: code,
-            tokenLength: token.length,
-          })
+          const code = token.slice(0, 6).toUpperCase()
           
           // Store the code we're sending in the VerificationToken record
           try {
@@ -165,17 +196,17 @@ export const authOptions: NextAuthOptions = {
                   code: code,
                 },
               })
-              console.log('Stored code in token:', { code, token: mostRecentToken.token.slice(0, 10) + '...' })
+              // Code stored successfully
             } else {
-              console.warn('No token found to store code for:', identifier)
+              // No token found to store code
             }
           } catch (error) {
-            console.error('Failed to store code:', error)
+            // Failed to store code - continue anyway
           }
           
           try {
             const result = await getResend().emails.send({
-              from: process.env.EMAIL_FROM || provider.from || 'noreply@nuclioapp.com',
+              from: process.env.EMAIL_FROM || provider.from || 'noreply@notifications.nuclioapp.com',
               to: identifier,
               subject: 'Your Nuclio sign-in code',
               html: `
@@ -199,27 +230,13 @@ export const authOptions: NextAuthOptions = {
             })
             
             if (result.error) {
-              const errorDetails = {
-                error: result.error,
-                errorMessage: typeof result.error === 'string' ? result.error : result.error?.message,
-                errorName: result.error?.name,
-                errorType: typeof result.error,
-                identifier,
-                from: provider.from,
-              }
-              console.error('Resend API error (code-based):', errorDetails)
               const errorMsg = typeof result.error === 'string' 
                 ? result.error 
                 : result.error?.message || JSON.stringify(result.error) || 'Failed to send email'
               throw new Error(errorMsg)
             }
           } catch (error: any) {
-            console.error('Failed to send verification code email:', {
-              error,
-              errorMessage: error?.message,
-              errorName: error?.name,
-              identifier,
-              from: provider.from,
+            // Error sending verification code email
             })
             throw new Error(
               error?.message || 
@@ -266,23 +283,23 @@ export const authOptions: NextAuthOptions = {
             where: { id: user.id },
             data: { orgId: pendingInvitation.orgId },
           })
-        } else if (existingUser && !existingUser.orgId) {
-          // Assign to default org if no org and no pending invitation
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { orgId: 'default-org' },
-          })
-        } else if (!existingUser) {
-          // This shouldn't happen with PrismaAdapter, but just in case
-          await prisma.user.create({
-            data: {
-              id: user.id,
-              email: user.email!,
-              name: user.name,
-              orgId: 'default-org',
-            },
-          })
+        } else if (existingUser) {
+          // Existing user - ensure they have an org
+          if (!existingUser.orgId || !existingUser.org) {
+            // Create a new org for this user
+            const newOrg = await prisma.org.create({
+              data: {
+                name: `${existingUser.name || existingUser.email}'s Organization`,
+                slug: existingUser.id, // Use user ID as slug for uniqueness
+              },
+            })
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { orgId: newOrg.id },
+            })
+          }
         }
+        // Note: New users are created by PrismaAdapter, handled in createUser event
       }
       return true
     },
@@ -296,22 +313,66 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
+    async redirect({ url, baseUrl }) {
+      // Try to get email from callback URL to look up org slug
+      try {
+        const urlObj = new URL(url, baseUrl)
+        const emailParam = urlObj.searchParams.get('email')
+        
+        if (emailParam) {
+          // Handle potential double-encoding
+          let email = emailParam
+          if (email.includes('%25')) {
+            try {
+              let decoded = decodeURIComponent(email)
+              if (decoded.includes('%40')) {
+                decoded = decodeURIComponent(decoded)
+              }
+              email = decoded
+            } catch (e) {
+              // Use original if decoding fails
+            }
+          }
+          
+          // Look up user's org slug
+          const user = await prisma.user.findUnique({
+            where: { email: email.toLowerCase() },
+            include: { org: true },
+          })
+          
+          if (user?.org?.slug) {
+            return `${baseUrl}/${user.org.slug}`
+          }
+        }
+      } catch (error) {
+        // If anything fails, fall back to root
+      }
+      
+      // Fallback to root - DashboardPage will handle org redirect
+      return `${baseUrl}/`
+    },
   },
   events: {
     async createUser({ user }) {
-      // Ensure new users get assigned to default org
+      // Create a new org for each new user
       if (user && typeof user === 'object' && 'id' in user) {
         const userId = (user as any).id
-        const dbUser = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { id: true, orgId: true },
+        const userEmail = (user as any).email
+        const userName = (user as any).name
+        
+        // Create a new org for this user
+        const newOrg = await prisma.org.create({
+          data: {
+            name: `${userName || userEmail || 'User'}'s Organization`,
+            slug: userId, // Use user ID as slug for uniqueness
+          },
         })
-        if (dbUser && !dbUser.orgId) {
-          await prisma.user.update({
-            where: { id: userId },
-            data: { orgId: 'default-org' },
-          })
-        }
+        
+        // Update user to belong to their new org
+        await prisma.user.update({
+          where: { id: userId },
+          data: { orgId: newOrg.id },
+        })
       }
     },
   },

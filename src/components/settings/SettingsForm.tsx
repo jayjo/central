@@ -741,6 +741,24 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
           </CardContent>
         </Card>
 
+        {/* Admin Section - Only visible to jeff@jayjodesign.com */}
+        {user.email.toLowerCase() === 'jeff@jayjodesign.com' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin</CardTitle>
+              <CardDescription>Administrative tools and settings</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={() => router.push('/admin')}
+                variant="outline"
+              >
+                Open Admin Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Account Actions */}
         <Card>
           <CardHeader>

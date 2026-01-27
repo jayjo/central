@@ -37,23 +37,11 @@ export async function POST(request: NextRequest) {
     const providedCode = code.toUpperCase().trim().replace(/[^A-Z0-9]/g, '')
     const storedCode = verificationToken.code?.toUpperCase()
     const tokenCode = verificationToken.token.slice(0, 6).toUpperCase()
-    
-    console.log('Verifying code:', {
-      email,
-      providedCode,
-      storedCode,
-      tokenCode,
-      matchesStored: storedCode === providedCode,
-      matchesToken: tokenCode === providedCode,
-      tokenExpires: verificationToken.expires,
-      now: new Date(),
-    })
 
     // Check against stored code first (what we actually sent), then fall back to token prefix
     const codeMatches = storedCode === providedCode || tokenCode === providedCode
 
     if (!codeMatches) {
-      console.log('Code mismatch:', { providedCode, storedCode, tokenCode })
       return NextResponse.json(
         { 
           error: 'Invalid code. Please check the code from your most recent email and try again.',
@@ -62,15 +50,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('Token matched successfully')
-
     // Return the full token so NextAuth can complete the sign-in
     return NextResponse.json({
       token: verificationToken.token,
       email: verificationToken.identifier,
     })
   } catch (error: any) {
-    console.error('Code verification error:', error)
     return NextResponse.json(
       { error: 'Failed to verify code' },
       { status: 500 }

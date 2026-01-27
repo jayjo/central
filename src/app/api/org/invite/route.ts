@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
   
   try {
     await getResend().emails.send({
-      from: process.env.EMAIL_FROM || 'Nuclio <noreply@nuclioapp.com>',
+      from: process.env.EMAIL_FROM || 'Nuclio <noreply@notifications.nuclioapp.com>',
       to: email.trim().toLowerCase(),
       subject: `Invitation to join ${user.org.name || 'Nuclio'}`,
       html: `

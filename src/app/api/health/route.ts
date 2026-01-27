@@ -9,6 +9,10 @@ export async function GET() {
     return NextResponse.json({
       status: 'ok',
       database: 'connected',
+      hasResendApiKey: !!process.env.RESEND_API_KEY,
+      emailFrom: process.env.EMAIL_FROM || 'NOT SET',
+      nextAuthSecret: !!process.env.NEXTAUTH_SECRET,
+      nextAuthUrl: process.env.NEXTAUTH_URL || 'NOT SET',
       timestamp: new Date().toISOString(),
     })
   } catch (error: any) {
@@ -19,6 +23,9 @@ export async function GET() {
         database: 'disconnected',
         error: error.message,
         hasDatabaseUrl: !!process.env.DATABASE_URL,
+        hasResendApiKey: !!process.env.RESEND_API_KEY,
+        emailFrom: process.env.EMAIL_FROM || 'NOT SET',
+        nextAuthSecret: !!process.env.NEXTAUTH_SECRET,
         timestamp: new Date().toISOString(),
       },
       { status: 500 }
