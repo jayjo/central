@@ -28,9 +28,32 @@ export async function getTodoUrl(todoId: string, userId?: string): Promise<strin
  * Resolve org slug to org ID
  */
 export async function getOrgIdFromSlug(slug: string): Promise<string | null> {
+  if (!slug) return null
+  
+  // Try exact match first
   const org = await prisma.org.findUnique({
     where: { slug },
     select: { id: true },
   })
-  return org?.id || null
+  
+  if (org) {
+    return org.id
+  }
+  
+  // If not found, try case-insensitive lookup
+  const allOrgs = await prisma.org.findMany({
+    where: {
+      slug: {
+        equals: slug,
+        mode: 'insensitive',
+      },
+    },
+    select: { id: true, slug: true },
+  })
+  
+  if (allOrgs.length > 0) {
+    return allOrgs[0].id
+  }
+  
+  return null
 }

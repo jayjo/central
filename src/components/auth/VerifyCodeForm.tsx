@@ -53,8 +53,7 @@ export function VerifyCodeForm() {
       const callbackUrl = `/api/auth/callback/email?email=${encodeURIComponent(email)}&token=${encodeURIComponent(data.token)}&callbackUrl=${encodeURIComponent('/')}`
       window.location.href = callbackUrl
     } catch (err: any) {
-      console.error('Verification error:', err)
-      setError(err.message || 'Invalid code. Please try again.')
+      setError('Invalid code. Please try again.')
       setLoading(false)
     }
   }

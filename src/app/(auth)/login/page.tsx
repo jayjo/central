@@ -1,16 +1,27 @@
 import { getSession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { SignInForm } from '@/components/auth/SignInForm'
+import { prisma } from '@/lib/db'
 
 export default async function LoginPage() {
   try {
     const session = await getSession()
 
-    if (session) {
-      redirect('/')
+    if (session?.user?.email) {
+      // Get user's org slug and redirect there
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        include: { org: true },
+      })
+      
+      if (user?.org?.slug) {
+        redirect(`/${user.org.slug}`)
+      } else if (user) {
+        // User exists but no org - redirect to root to create one
+        redirect('/')
+      }
     }
   } catch (error) {
-    console.error('Error in LoginPage:', error)
     // Continue to show login form even if session check fails
   }
 
