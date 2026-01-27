@@ -33,7 +33,6 @@ function createSafeAdapter(): Adapter {
 
 export const authOptions: NextAuthOptions = {
   adapter: createSafeAdapter(),
-  trustHost: true, // Allow any host for callback URLs (needed for magic links)
   // Explicitly set the base URL to avoid callback URL validation issues
   ...(process.env.NEXTAUTH_URL && { 
     url: process.env.NEXTAUTH_URL 
