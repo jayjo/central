@@ -11,12 +11,37 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY || '')
 }
 
-// Wrap PrismaAdapter to handle delete errors gracefully
+// Wrap PrismaAdapter to handle delete errors and ensure new users get a valid org
 function createSafeAdapter(): Adapter {
   const baseAdapter = PrismaAdapter(prisma) as Adapter
-  
+
   return {
     ...baseAdapter,
+    async createUser(user) {
+      // Create an org first so User's orgId foreign key is satisfied (no "default-org" dependency)
+      const newOrg = await prisma.org.create({
+        data: {
+          name: `${user.name || user.email || 'User'}'s Organization`,
+          slug: `org-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+        },
+      })
+      const created = await prisma.user.create({
+        data: {
+          email: user.email!,
+          name: user.name ?? null,
+          emailVerified: user.emailVerified ?? null,
+          image: user.image ?? null,
+          orgId: newOrg.id,
+        },
+      })
+      return {
+        id: created.id,
+        email: created.email,
+        name: created.name,
+        emailVerified: created.emailVerified,
+        image: created.image,
+      }
+    },
     async deleteSession(sessionToken: string) {
       try {
         return await baseAdapter.deleteSession!(sessionToken)
@@ -87,21 +112,18 @@ export const authOptions: NextAuthOptions = {
         const isMagicLink = url && (url.includes('/api/auth/callback/email') || url.includes('callbackUrl') || url.startsWith('http'))
         
         if (isMagicLink) {
-          // Reconstruct the URL without the callbackUrl parameter to avoid encoding issues
-          // NextAuth will use the default redirect from our redirect callback
-          try {
-            const urlObj = new URL(url)
-            // Remove the callbackUrl parameter - our redirect callback will handle the redirect
-            urlObj.searchParams.delete('callbackUrl')
-            
-            // Remove any existing email parameter to avoid double-encoding
-            urlObj.searchParams.delete('email')
-            
-            // Set email parameter using the raw identifier (URLSearchParams will encode it once)
-            // This ensures it's only encoded once, not double-encoded by email clients
-            urlObj.searchParams.set('email', identifier)
-            
-            const cleanUrl = urlObj.toString()
+            // Reconstruct the URL without the callbackUrl parameter to avoid encoding issues
+            // NextAuth will use the default redirect from our redirect callback
+            try {
+              const urlObj = new URL(url)
+              // Remove the callbackUrl parameter - our redirect callback will handle the redirect
+              urlObj.searchParams.delete('callbackUrl')
+              
+              // Remove email parameter - we'll get it from the session in the redirect callback
+              // This makes the URL cleaner and less likely to trigger security warnings
+              urlObj.searchParams.delete('email')
+              
+              const cleanUrl = urlObj.toString()
             
             // Validate environment variables
             if (!process.env.RESEND_API_KEY) {
@@ -296,65 +318,34 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      // Try to get email from callback URL to look up org slug
-      try {
-        const urlObj = new URL(url, baseUrl)
-        const emailParam = urlObj.searchParams.get('email')
-        
-        if (emailParam) {
-          // Handle potential double-encoding
-          let email = emailParam
-          if (email.includes('%25')) {
-            try {
-              let decoded = decodeURIComponent(email)
-              if (decoded.includes('%40')) {
-                decoded = decodeURIComponent(decoded)
-              }
-              email = decoded
-            } catch (e) {
-              // Use original if decoding fails
-            }
-          }
-          
-          // Look up user's org slug
-          const user = await prisma.user.findUnique({
-            where: { email: email.toLowerCase() },
-            include: { org: true },
-          })
-          
-          if (user?.org?.slug) {
-            return `${baseUrl}/${user.org.slug}`
-          }
-        }
-      } catch (error) {
-        // If anything fails, fall back to root
-      }
-      
-      // Fallback to root - DashboardPage will handle org redirect
+      // Redirect to root - DashboardPage will handle org redirect based on session
+      // This avoids needing email in the URL, making links cleaner and less likely to trigger security warnings
       return `${baseUrl}/`
     },
   },
   events: {
     async createUser({ user }) {
-      // Create a new org for each new user
+      // Only fix users that still have the schema default org (e.g. from another adapter path or legacy)
       if (user && typeof user === 'object' && 'id' in user) {
         const userId = (user as any).id
-        const userEmail = (user as any).email
-        const userName = (user as any).name
-        
-        // Create a new org for this user
-        const newOrg = await prisma.org.create({
-          data: {
-            name: `${userName || userEmail || 'User'}'s Organization`,
-            slug: userId, // Use user ID as slug for uniqueness
-          },
-        })
-        
-        // Update user to belong to their new org
-        await prisma.user.update({
+        const existing = await prisma.user.findUnique({
           where: { id: userId },
-          data: { orgId: newOrg.id },
+          include: { org: true },
         })
+        if (existing?.orgId === 'default-org' || !existing?.org) {
+          const userEmail = (existing?.email ?? (user as any).email) as string
+          const userName = (existing?.name ?? (user as any).name) as string | null
+          const newOrg = await prisma.org.create({
+            data: {
+              name: `${userName || userEmail || 'User'}'s Organization`,
+              slug: `org-${userId}`,
+            },
+          })
+          await prisma.user.update({
+            where: { id: userId },
+            data: { orgId: newOrg.id },
+          })
+        }
       }
     },
   },
