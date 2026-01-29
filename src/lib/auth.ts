@@ -5,7 +5,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from './db'
 import { Resend } from 'resend'
 import bcrypt from 'bcryptjs'
-import type { Adapter } from 'next-auth/adapters'
+import type { Adapter, AdapterUser } from 'next-auth/adapters'
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY || '')
@@ -17,7 +17,7 @@ function createSafeAdapter(): Adapter {
 
   return {
     ...baseAdapter,
-    async createUser(user) {
+    async createUser(user: Omit<AdapterUser, 'id'>) {
       // Create an org first so User's orgId foreign key is satisfied (no "default-org" dependency)
       const newOrg = await prisma.org.create({
         data: {
