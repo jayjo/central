@@ -53,6 +53,23 @@ function createSafeAdapter(): Adapter {
         throw error
       }
     },
+    async useVerificationToken(params: { identifier?: string; token: string }) {
+      const { identifier, token } = params
+      // Magic link URL may omit email (we strip it for cleaner links), so identifier can be missing.
+      // Prisma composite key requires both; our schema has token @unique so we can delete by token only.
+      if (identifier !== undefined && identifier !== '') {
+        return baseAdapter.useVerificationToken!({ identifier, token })
+      }
+      try {
+        const deleted = await prisma.verificationToken.delete({
+          where: { token },
+        })
+        return { identifier: deleted.identifier, token: deleted.token, expires: deleted.expires }
+      } catch (error: any) {
+        if (error?.code === 'P2025') return null
+        throw error
+      }
+    },
   } as Adapter
 }
 
