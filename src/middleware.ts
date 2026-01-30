@@ -2,12 +2,17 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // Edge runtime on Vercel only exposes NEXT_PUBLIC_* env vars. Use a public flag
-  // to enable the gate; the actual password is validated server-side in the API.
-  const stagingGateEnabled = process.env.NEXT_PUBLIC_STAGING_GATE_ENABLED === 'true'
+  // VERCEL_ENV is set by Vercel at runtime (preview | production | development) and is
+  // available in Edge. Use it so preview deployments get the gate without NEXT_PUBLIC_.
+  // Fallback to NEXT_PUBLIC_ for non-Vercel or if you need the gate on production.
+  const stagingGateEnabled =
+    process.env.VERCEL_ENV === 'preview' ||
+    process.env.NEXT_PUBLIC_STAGING_GATE_ENABLED === 'true'
 
   if (!stagingGateEnabled) {
-    return NextResponse.next()
+    const res = NextResponse.next()
+    res.headers.set('X-Staging-Gate', 'disabled')
+    return res
   }
 
   // Check if user has staging access cookie
@@ -41,10 +46,14 @@ export function middleware(request: NextRequest) {
     if (pathname !== '/' && pathname !== '/staging-gate') {
       url.searchParams.set('redirect', pathname)
     }
-    return NextResponse.redirect(url)
+    const redirect = NextResponse.redirect(url)
+    redirect.headers.set('X-Staging-Gate', 'redirect')
+    return redirect
   }
-  
-  return NextResponse.next()
+
+  const res = NextResponse.next()
+  res.headers.set('X-Staging-Gate', 'passed')
+  return res
 }
 
 export const config = {
