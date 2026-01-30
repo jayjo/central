@@ -14,11 +14,10 @@ export function middleware(request: NextRequest) {
   const stagingAccess = request.cookies.get('staging-access')
   const pathname = request.nextUrl.pathname
   
-  // Allow access to staging gate page and API routes needed for authentication
+  // Allow only staging gate and its API; require gate before /login or /api/auth
   const allowedPaths = [
     '/staging-gate',
     '/api/staging-access',
-    '/api/auth',
   ]
   
   const isAllowedPath = allowedPaths.some(path => 
@@ -51,11 +50,9 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api (but we'll handle /api/staging-access and /api/auth specially)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * Match all request paths except:
+     * - _next/static, _next/image, favicon.ico
+     * (staging gate allows only /staging-gate and /api/staging-access without cookie)
      */
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
