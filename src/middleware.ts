@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // Only enforce staging gate if STAGING_ACCESS_PASSWORD is set
-  const stagingPassword = process.env.STAGING_ACCESS_PASSWORD
-  
-  if (!stagingPassword) {
-    // Not in staging mode, allow all requests
+  // Edge runtime on Vercel only exposes NEXT_PUBLIC_* env vars. Use a public flag
+  // to enable the gate; the actual password is validated server-side in the API.
+  const stagingGateEnabled = process.env.NEXT_PUBLIC_STAGING_GATE_ENABLED === 'true'
+
+  if (!stagingGateEnabled) {
     return NextResponse.next()
   }
 
