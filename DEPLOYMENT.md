@@ -49,6 +49,26 @@ CRON_SECRET="another-random-secret"  # Optional but recommended
 OPENAI_API_KEY="sk-xxxxxxxxxxxxx"  # Only if you're using AI features
 ```
 
+### Staging gate (preview / branch deployments)
+
+To require a password before anyone can access the app (e.g. on Preview deployments):
+
+1. **NEXT_PUBLIC_STAGING_GATE_ENABLED** – Must be set for the staging gate to run. Middleware runs on Vercel’s Edge runtime, which only sees `NEXT_PUBLIC_*` variables, so this flag is required.
+   - Set to `"true"` for the **Preview** environment (or whichever env you use for staging).
+   - Do **not** set it for Production if you don’t want a gate there.
+
+2. **STAGING_ACCESS_PASSWORD** – The secret password users must enter to pass the gate. Keep this secret; it is only used in the API (server-side).
+
+```bash
+# Enable the gate (required for middleware to redirect to /staging-gate)
+NEXT_PUBLIC_STAGING_GATE_ENABLED="true"
+
+# Password users enter on the staging gate page (set for same environment as above)
+STAGING_ACCESS_PASSWORD="your-staging-password"
+```
+
+Add both in Vercel → Project → Settings → Environment Variables, and select **Preview** (or your staging environment) so branch deployments use them.
+
 ### Generating Secrets
 
 Run these commands to generate secure secrets:
@@ -190,6 +210,16 @@ For staging, consider:
 - Using Preview deployments (automatic for PRs)
 - Using different environment variables for staging
 - Using a separate database for staging
+- Enabling the **staging gate** (see “Staging gate” above) so only people with the password can open the app
+
+### Landing at /login instead of the staging gate
+
+If you see `/login` instead of the staging gate on a preview/staging deploy, the gate is not active. Add **both** of these for the **Preview** (or your staging) environment in Vercel:
+
+- `NEXT_PUBLIC_STAGING_GATE_ENABLED=true` (middleware needs this; Edge only sees `NEXT_PUBLIC_*` vars)
+- `STAGING_ACCESS_PASSWORD=your-secret` (used by the API to validate the password)
+
+Redeploy after adding them.
 
 ## Next Steps
 
