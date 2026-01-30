@@ -51,23 +51,18 @@ OPENAI_API_KEY="sk-xxxxxxxxxxxxx"  # Only if you're using AI features
 
 ### Staging gate (preview / branch deployments)
 
-To require a password before anyone can access the app (e.g. on Preview deployments):
+To require a password before anyone can access the app on **Preview** deployments (branch/PR deploys):
 
-1. **NEXT_PUBLIC_STAGING_GATE_ENABLED** – Must be set for the staging gate to run. Middleware runs on Vercel’s Edge runtime, which only sees `NEXT_PUBLIC_*` variables, so this flag is required.
-   - Set to `"true"` for the **Preview** environment (or whichever env you use for staging).
-   - Do **not** set it for Production if you don’t want a gate there.
+1. **STAGING_ACCESS_PASSWORD** – The secret password users must enter. Set this for the **Preview** environment in Vercel. The gate is enabled automatically on Preview via Vercel’s `VERCEL_ENV` (no `NEXT_PUBLIC_` var needed).
 
-2. **STAGING_ACCESS_PASSWORD** – The secret password users must enter to pass the gate. Keep this secret; it is only used in the API (server-side).
+2. **Optional: NEXT_PUBLIC_STAGING_GATE_ENABLED** – Only if you need the gate on **Production** (e.g. a dedicated staging project). Set to `"true"` for that environment.
 
 ```bash
-# Enable the gate (required for middleware to redirect to /staging-gate)
-NEXT_PUBLIC_STAGING_GATE_ENABLED="true"
-
-# Password users enter on the staging gate page (set for same environment as above)
+# Required for Preview: password for the staging gate (set for Preview env in Vercel)
 STAGING_ACCESS_PASSWORD="your-staging-password"
 ```
 
-Add both in Vercel → Project → Settings → Environment Variables, and select **Preview** (or your staging environment) so branch deployments use them.
+Add `STAGING_ACCESS_PASSWORD` in Vercel → Project → Settings → Environment Variables, and select **Preview** so branch deployments use it.
 
 ### Generating Secrets
 
@@ -214,12 +209,18 @@ For staging, consider:
 
 ### Landing at /login instead of the staging gate
 
-If you see `/login` instead of the staging gate on a preview/staging deploy, the gate is not active. Add **both** of these for the **Preview** (or your staging) environment in Vercel:
+If you see `/login` instead of the staging gate on a **Preview** deploy:
 
-- `NEXT_PUBLIC_STAGING_GATE_ENABLED=true` (middleware needs this; Edge only sees `NEXT_PUBLIC_*` vars)
-- `STAGING_ACCESS_PASSWORD=your-secret` (used by the API to validate the password)
+1. **Confirm it’s a Preview deployment** – Branch and PR deploys use Preview. Production deploys (e.g. from `main`) do not get the gate unless you set `NEXT_PUBLIC_STAGING_GATE_ENABLED=true` for Production.
 
-Redeploy after adding them.
+2. **Set STAGING_ACCESS_PASSWORD** for the **Preview** environment in Vercel (Project → Settings → Environment Variables). The gate is enabled automatically on Preview via `VERCEL_ENV`.
+
+3. **Redeploy** after changing env vars.
+
+4. **Check the response header** – In DevTools → Network, open the first request (e.g. to `/`). Look for `X-Staging-Gate`:
+   - `redirect` = gate is on and you were redirected to `/staging-gate` (you should see the gate).
+   - `passed` = you already have the staging cookie.
+   - `disabled` = gate is off (not a Preview deploy, or `VERCEL_ENV` isn’t `preview` in Edge).
 
 ## Next Steps
 
