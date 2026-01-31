@@ -145,14 +145,41 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
                 </div>
               </TooltipContent>
             </Tooltip>
+            {/* Mobile: Todos links to my-todos page (Today/Upcoming/Completed as full page) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href={myTodosUrl}
+                  className={cn(
+                    'md:hidden w-full flex items-center justify-center',
+                    pathname === myTodosUrl && 'bg-accent rounded-md'
+                  )}
+                  data-no-warn="true"
+                >
+                  <Button
+                    variant={pathname === myTodosUrl ? 'secondary' : 'ghost'}
+                    size="icon"
+                    className="w-full"
+                  >
+                    <CheckSquare className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="flex items-center gap-2">
+                  <span>Todos</span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+            {/* Desktop: Todos opens the drawer */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={pathname === '/my-todos' ? 'secondary' : 'ghost'}
+                  variant={pathname === myTodosUrl ? 'secondary' : 'ghost'}
                   size="icon"
                   className={cn(
-                    'w-full',
-                    pathname === '/my-todos' && 'bg-accent'
+                    'hidden md:flex w-full',
+                    pathname === myTodosUrl && 'bg-accent'
                   )}
                   onClick={() => setShowTodosMenu(!showTodosMenu)}
                 >
@@ -245,15 +272,17 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
         </div>
       </div>
 
-      {/* Todos Menu */}
+      {/* Todos Menu drawer - desktop only; on mobile Todos links to my-todos page */}
       {todos && (
-        <TodosMenu 
-          todos={todos} 
-          isOpen={showTodosMenu}
-          onClose={() => setShowTodosMenu(false)}
-          currentUserId={currentUserId}
-          highlightedTodoId={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('highlight') || undefined : undefined}
-        />
+        <div className="hidden md:block">
+          <TodosMenu 
+            todos={todos} 
+            isOpen={showTodosMenu}
+            onClose={() => setShowTodosMenu(false)}
+            currentUserId={currentUserId}
+            highlightedTodoId={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('highlight') || undefined : undefined}
+          />
+        </div>
       )}
 
       {/* Feedback Modal */}

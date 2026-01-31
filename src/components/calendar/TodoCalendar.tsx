@@ -21,11 +21,20 @@ interface TodoCalendarProps {
   currentUserId?: string
 }
 
+const MOBILE_BREAKPOINT = 768
+
 export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<ViewMode>('month')
   const [filterMode, setFilterMode] = useState<FilterMode>('all')
   const orgSlug = useOrgSlug()
+
+  // Default to day view on mobile (set after mount to avoid hydration mismatch)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT) {
+      setViewMode('day')
+    }
+  }, [])
   
   const getTodoUrl = (todoId: string, highlight: boolean = false) => {
     const baseUrl = orgSlug ? `/${orgSlug}/todos/${todoId}` : `/todos/${todoId}`
