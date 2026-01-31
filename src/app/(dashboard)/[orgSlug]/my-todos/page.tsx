@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { TodoList } from '@/components/todos/TodoList'
+import { TodoListBySections } from '@/components/todos/TodoListBySections'
 import { CreateTodoForm } from '@/components/todos/CreateTodoForm'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
@@ -127,7 +127,7 @@ export default async function OrgSlugMyTodosPage({
         </div>
       ) : null}
 
-      <TodoList todos={todos} />
+      <TodoListBySections todos={todos} currentUserId={user.id} />
     </div>
   )
 }

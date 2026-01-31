@@ -5,7 +5,6 @@ import { useEffect } from 'react'
 export function RedirectToOrg({ orgSlug }: { orgSlug: string }) {
   useEffect(() => {
     // Use a small delay to ensure the session cookie is set
-    // Then redirect using window.location to ensure it works
     const timer = setTimeout(() => {
       window.location.href = `/${orgSlug}`
     }, 100)
