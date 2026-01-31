@@ -124,8 +124,9 @@ export function TodoListBySections({ todos, currentUserId }: TodoListBySectionsP
   }
 
   return (
-    <Accordion type="multiple" defaultValue={['today', 'upcoming', 'completed']} className="space-y-2">
-      <AccordionItem value="today" className="border rounded-lg px-4">
+    <div className="space-y-2">
+      <Accordion defaultValue={['today', 'upcoming', 'completed']}>
+      <AccordionItem value="today">
         <AccordionTrigger className="hover:no-underline py-4">
           <span className="font-semibold">Today</span>
           <span className="text-muted-foreground text-sm ml-2">({today.length})</span>
@@ -148,7 +149,7 @@ export function TodoListBySections({ todos, currentUserId }: TodoListBySectionsP
         </AccordionContent>
       </AccordionItem>
 
-      <AccordionItem value="upcoming" className="border rounded-lg px-4">
+      <AccordionItem value="upcoming">
         <AccordionTrigger className="hover:no-underline py-4">
           <span className="font-semibold">Upcoming</span>
           <span className="text-muted-foreground text-sm ml-2">({upcoming.length})</span>
@@ -171,7 +172,7 @@ export function TodoListBySections({ todos, currentUserId }: TodoListBySectionsP
         </AccordionContent>
       </AccordionItem>
 
-      <AccordionItem value="completed" className="border rounded-lg px-4">
+      <AccordionItem value="completed">
         <AccordionTrigger className="hover:no-underline py-4">
           <span className="font-semibold">Completed</span>
           <span className="text-muted-foreground text-sm ml-2">({completed.length})</span>
@@ -194,5 +195,6 @@ export function TodoListBySections({ todos, currentUserId }: TodoListBySectionsP
         </AccordionContent>
       </AccordionItem>
     </Accordion>
+    </div>
   )
 }
