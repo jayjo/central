@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,8 +28,14 @@ interface AcceptInvitationFormProps {
 
 export function AcceptInvitationForm({ invitation }: AcceptInvitationFormProps) {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState(invitation.email)
+
+  const isLoggedInAsInvitee =
+    status === 'authenticated' &&
+    session?.user?.email &&
+    session.user.email.toLowerCase() === invitation.email.toLowerCase()
 
   async function handleAccept() {
     if (email.toLowerCase() !== invitation.email.toLowerCase()) {
@@ -40,7 +46,27 @@ export function AcceptInvitationForm({ invitation }: AcceptInvitationFormProps) 
     setLoading(true)
 
     try {
-      // First, sign in or create account with magic link
+      // Already logged in as invitee: just accept via API and redirect
+      if (isLoggedInAsInvitee) {
+        const response = await fetch(`/api/org/invite/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: window.location.pathname.split('/').pop(),
+          }),
+        })
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to accept invitation')
+        }
+        toast.success('You have joined the organization')
+        router.push('/')
+        router.refresh()
+        setLoading(false)
+        return
+      }
+
+      // Not logged in: send magic link only; signIn callback will accept when they use the link
       const result = await signIn('email', {
         email: invitation.email,
         redirect: false,
@@ -48,27 +74,12 @@ export function AcceptInvitationForm({ invitation }: AcceptInvitationFormProps) 
       })
 
       if (result?.error) {
-        toast.error('Failed to send sign-in email')
+        toast.error(result.error === 'EmailSignin' ? 'Failed to send sign-in email' : result.error)
         setLoading(false)
         return
       }
 
-      // Accept the invitation via API
-      const response = await fetch(`/api/org/invite/accept`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: window.location.pathname.split('/').pop(),
-        }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to accept invitation')
-      }
-
-      toast.success('Check your email to sign in and complete the invitation')
-      // The magic link will handle the rest when they sign in
+      toast.success('Check your email to sign in and join the organization.')
     } catch (error: any) {
       toast.error(error.message || 'Failed to accept invitation')
       setLoading(false)
