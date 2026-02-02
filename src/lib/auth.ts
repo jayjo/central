@@ -284,7 +284,7 @@ export const authOptions: NextAuthOptions = {
         // Check for pending invitation
         const pendingInvitation = await prisma.orgInvitation.findFirst({
           where: {
-            email: user.email!.toLowerCase(),
+            email: { equals: user.email!, mode: 'insensitive' },
             accepted: false,
             expires: {
               gt: new Date(),
