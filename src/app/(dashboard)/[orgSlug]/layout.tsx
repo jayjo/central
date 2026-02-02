@@ -70,12 +70,13 @@ export default async function OrgSlugLayout({
       }
     }
 
-    // Get recent todos for the sidebar menu, ordered by due date (soonest first)
+    // Get recent todos for the sidebar menu (own, shared with user, org-visible), ordered by due date
     const recentTodos = await prisma.todo.findMany({
     where: {
       OR: [
         { ownerId: user.id },
         { sharedWith: { some: { id: user.id } } },
+        { visibility: 'ORG', owner: { orgId: user.orgId } },
       ],
     },
     orderBy: [

@@ -106,8 +106,13 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
     slugCheckTimeoutRef.current = setTimeout(async () => {
       try {
         const response = await fetch(`/api/org/slug?slug=${encodeURIComponent(orgSlug)}`)
-        const data = await response.json()
-        
+        const text = await response.text()
+        const data = text ? (() => { try { return JSON.parse(text) } catch { return null } })() : null
+        if (data == null) {
+          setSlugAvailable(false)
+          setSlugMessage('Error checking slug availability')
+          return
+        }
         if (data.available) {
           setSlugAvailable(true)
           setSlugMessage('This slug is available!')
@@ -236,9 +241,11 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
         body: JSON.stringify({ slug: orgSlug }),
       })
 
+      const text = await response.text()
+      const data = text ? (() => { try { return JSON.parse(text) } catch { return null } })() : null
+
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to update organization slug')
+        throw new Error((data && typeof data.error === 'string' ? data.error : null) || 'Failed to update organization slug')
       }
 
       toast.success('Organization slug updated successfully')
