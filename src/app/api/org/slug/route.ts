@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { getDevUser } from '@/lib/dev-auth'
+import { getSession } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -31,12 +31,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  // TODO: Re-enable auth after fixing code verification
-  const user = await getDevUser()
+  const session = await getSession()
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  // Get user's org
   const userWithOrg = await prisma.user.findUnique({
-    where: { id: user.id },
+    where: { email: session.user.email },
     include: { org: true },
   })
 
