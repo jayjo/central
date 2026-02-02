@@ -8,9 +8,12 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY || '')
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   const session = await getSession()
-  
+
   if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -24,69 +27,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'User or organization not found' }, { status: 404 })
   }
 
-  const body = await request.json()
-  const { email } = body
-
-  if (!email || !email.trim()) {
-    return NextResponse.json({ error: 'Email is required' }, { status: 400 })
-  }
-
-  // Check if user is already in the org
-  const existingUser = await prisma.user.findUnique({
-    where: { email: email.trim().toLowerCase() },
+  const invitation = await prisma.orgInvitation.findUnique({
+    where: { id: params.id },
   })
 
-  if (existingUser && existingUser.orgId === user.orgId) {
-    return NextResponse.json({ error: 'User is already a member of this organization' }, { status: 400 })
+  if (!invitation) {
+    return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
   }
 
-  // Check for any non-accepted invitation (active or expired)
-  const existingInvitation = await prisma.orgInvitation.findFirst({
-    where: {
-      email: email.trim().toLowerCase(),
-      orgId: user.orgId,
-      accepted: false,
-    },
-  })
+  if (invitation.orgId !== user.orgId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
-  const now = new Date()
+  if (invitation.accepted) {
+    return NextResponse.json({ error: 'Invitation already accepted' }, { status: 400 })
+  }
+
   const token = randomBytes(32).toString('hex')
   const expires = new Date()
   expires.setDate(expires.getDate() + 7)
-  let invitation: { id: string; email: string }
-  let isNewInvitation: boolean
 
-  if (existingInvitation) {
-    if (existingInvitation.expires > now) {
-      return NextResponse.json({ error: 'An invitation has already been sent to this email' }, { status: 400 })
-    }
-    // Expired: refresh token and expires (reinvite)
-    isNewInvitation = false
-    invitation = await prisma.orgInvitation.update({
-      where: { id: existingInvitation.id },
-      data: { token, expires, invitedBy: user.id },
-    })
-  } else {
-    // New invitation
-    isNewInvitation = true
-    invitation = await prisma.orgInvitation.create({
-      data: {
-        email: email.trim().toLowerCase(),
-        orgId: user.orgId,
-        invitedBy: user.id,
-        token,
-        expires,
-      },
-    })
-  }
+  await prisma.orgInvitation.update({
+    where: { id: params.id },
+    data: { token, expires },
+  })
 
-  // Send invitation email
   const inviteUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/invite/${token}`
-  
+
   try {
     await getResend().emails.send({
       from: process.env.EMAIL_FROM || 'Nuclio <noreply@notifications.nuclioapp.com>',
-      to: email.trim().toLowerCase(),
+      to: invitation.email,
       subject: `Invitation to join ${user.org.name || 'Nuclio'}`,
       html: `
         <!DOCTYPE html>
@@ -109,19 +80,13 @@ export async function POST(request: NextRequest) {
         </html>
       `,
     })
-  } catch (error: any) {
-    console.error('Failed to send invitation email:', error)
-    // Only delete when we created a new invitation; if reinvite, leave record so they can try again
-    if (isNewInvitation) {
-      await prisma.orgInvitation.delete({
-        where: { id: invitation.id },
-      })
-    }
+  } catch (error: unknown) {
+    console.error('Failed to send reinvite email:', error)
     return NextResponse.json(
       { error: 'Failed to send invitation email' },
       { status: 500 }
     )
   }
 
-  return NextResponse.json({ success: true, invitation })
+  return NextResponse.json({ success: true })
 }

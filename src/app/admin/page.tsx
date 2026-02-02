@@ -1,10 +1,11 @@
 import { prisma } from '@/lib/db'
 import { getSession } from '@/lib/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { MoveUserToOrg } from '@/components/admin/MoveUserToOrg'
 
 export default async function AdminPage() {
   const session = await getSession()
-  
+
   // Get some basic stats
   const [userCount, orgCount, todoCount, invitationCount] = await Promise.all([
     prisma.user.count(),
@@ -20,9 +21,9 @@ export default async function AdminPage() {
     }),
   ])
 
-  // Get recent users
+  // Get recent users (with org id for move form)
   const recentUsers = await prisma.user.findMany({
-    take: 10,
+    take: 20,
     orderBy: {
       createdAt: 'desc',
     },
@@ -33,11 +34,18 @@ export default async function AdminPage() {
       createdAt: true,
       org: {
         select: {
+          id: true,
           name: true,
           slug: true,
         },
       },
     },
+  })
+
+  // Get all orgs for move-user dropdown
+  const orgs = await prisma.org.findMany({
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, slug: true },
   })
 
   return (
@@ -96,7 +104,7 @@ export default async function AdminPage() {
       <Card>
         <CardHeader>
           <CardTitle>Recent Users</CardTitle>
-          <CardDescription>Last 10 registered users</CardDescription>
+          <CardDescription>Last 20 registered users</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -122,6 +130,9 @@ export default async function AdminPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Move user to org */}
+      <MoveUserToOrg users={recentUsers} orgs={orgs} />
     </div>
   )
 }

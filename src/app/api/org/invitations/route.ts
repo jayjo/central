@@ -17,14 +17,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
-  // Get pending invitations for this org
+  // Get all non-accepted invitations (including expired so they stay visible; revoke or reinvite to remove/refresh)
   const invitations = await prisma.orgInvitation.findMany({
     where: {
       orgId: user.orgId,
       accepted: false,
-      expires: {
-        gt: new Date(),
-      },
     },
     include: {
       inviter: {

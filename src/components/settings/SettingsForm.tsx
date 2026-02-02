@@ -68,6 +68,7 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
   }>>([])
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
   const [revokingInvitationId, setRevokingInvitationId] = useState<string | null>(null)
+  const [reinvitingInvitationId, setReinvitingInvitationId] = useState<string | null>(null)
   
   const hasProfileChanges = name !== (user.name || '') || imageUrl !== (user.image || '')
   const hasLocationChanges = zipCode !== (user.zipCode || '')
@@ -361,6 +362,29 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
     }
   }
 
+  async function handleReinvite(invitationId: string) {
+    setReinvitingInvitationId(invitationId)
+    try {
+      const response = await fetch(`/api/org/invitations/${invitationId}/reinvite`, {
+        method: 'POST',
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to resend invitation')
+      }
+      toast.success('Invitation resent')
+      const invitationsResponse = await fetch('/api/org/invitations')
+      if (invitationsResponse.ok) {
+        const data = await invitationsResponse.json()
+        setInvitations(data.invitations || [])
+      }
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to resend invitation')
+    } finally {
+      setReinvitingInvitationId(null)
+    }
+  }
+
   async function handleRemoveMember(memberId: string, memberEmail: string) {
     if (!confirm(`Are you sure you want to remove ${memberEmail} from the organization?`)) {
       return
@@ -609,36 +633,67 @@ export function SettingsForm({ user, org }: { user: User; org: Org }) {
 
             {invitations.length > 0 && (
               <div className="space-y-2">
-                <Label>Pending Invitations</Label>
+                <Label>Invitations</Label>
                 <div className="space-y-2">
-                  {invitations.map((invitation) => (
-                    <div
-                      key={invitation.id}
-                      className="flex items-center justify-between p-3 border rounded-md"
-                    >
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{invitation.email}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Invited by {invitation.inviter.name || invitation.inviter.email} •{' '}
-                          {new Date(invitation.createdAt).toLocaleDateString()}
-                        </p>
+                  {invitations.map((invitation) => {
+                    const isExpired = new Date(invitation.expires) <= new Date()
+                    return (
+                      <div
+                        key={invitation.id}
+                        className="flex items-center justify-between p-3 border rounded-md"
+                      >
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{invitation.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Invited by {invitation.inviter.name || invitation.inviter.email} •{' '}
+                            {new Date(invitation.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {isExpired ? (
+                            <p className="text-xs text-muted-foreground">
+                              Expired {new Date(invitation.expires).toLocaleDateString()}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              Expires {new Date(invitation.expires).toLocaleDateString()}
+                            </p>
+                          )}
+                          {isExpired ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleReinvite(invitation.id)}
+                                disabled={reinvitingInvitationId === invitation.id}
+                              >
+                                {reinvitingInvitationId === invitation.id ? 'Sending...' : 'Reinvite'}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRevokeInvitation(invitation.id)}
+                                disabled={revokingInvitationId === invitation.id}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                {revokingInvitationId === invitation.id ? 'Revoking...' : 'Revoke'}
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRevokeInvitation(invitation.id)}
+                              disabled={revokingInvitationId === invitation.id}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              {revokingInvitationId === invitation.id ? 'Revoking...' : 'Revoke'}
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <p className="text-xs text-muted-foreground">
-                          Expires {new Date(invitation.expires).toLocaleDateString()}
-                        </p>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRevokeInvitation(invitation.id)}
-                          disabled={revokingInvitationId === invitation.id}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          {revokingInvitationId === invitation.id ? 'Revoking...' : 'Revoke'}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
