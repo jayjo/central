@@ -18,20 +18,39 @@ function createSafeAdapter(): Adapter {
   return {
     ...baseAdapter,
     async createUser(user: Omit<AdapterUser, 'id'>) {
-      // Create an org first so User's orgId foreign key is satisfied (no "default-org" dependency)
-      const newOrg = await prisma.org.create({
-        data: {
-          name: `${user.name || user.email || 'User'}'s Organization`,
-          slug: `org-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      // If there's a pending invitation for this email, add them to that org instead of creating a new one
+      const pendingInvitation = await prisma.orgInvitation.findFirst({
+        where: {
+          email: { equals: user.email!, mode: 'insensitive' },
+          accepted: false,
+          expires: { gt: new Date() },
         },
       })
+
+      let orgId: string
+      if (pendingInvitation) {
+        orgId = pendingInvitation.orgId
+        await prisma.orgInvitation.update({
+          where: { id: pendingInvitation.id },
+          data: { accepted: true },
+        })
+      } else {
+        const newOrg = await prisma.org.create({
+          data: {
+            name: `${user.name || user.email || 'User'}'s Organization`,
+            slug: `org-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+          },
+        })
+        orgId = newOrg.id
+      }
+
       const created = await prisma.user.create({
         data: {
           email: user.email!,
           name: user.name ?? null,
           emailVerified: user.emailVerified ?? null,
           image: user.image ?? null,
-          orgId: newOrg.id,
+          orgId,
         },
       })
       return {
