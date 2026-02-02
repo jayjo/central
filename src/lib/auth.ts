@@ -298,26 +298,42 @@ export const authOptions: NextAuthOptions = {
             where: { id: pendingInvitation.id },
             data: { accepted: true },
           })
-          
-          // Update user's org
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { orgId: pendingInvitation.orgId },
-          })
+          // Update user's org (guard: user may not be visible yet in same request / replica lag)
+          try {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { orgId: pendingInvitation.orgId },
+            })
+          } catch (err: unknown) {
+            const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : null
+            if (code === 'P2025') {
+              // Record to update not found - user may not be committed yet; skip, they'll get correct org on next sign-in
+            } else {
+              throw err
+            }
+          }
         } else if (existingUser) {
           // Existing user - ensure they have an org
           if (!existingUser.orgId || !existingUser.org) {
-            // Create a new org for this user
             const newOrg = await prisma.org.create({
               data: {
                 name: `${existingUser.name || existingUser.email}'s Organization`,
                 slug: existingUser.id, // Use user ID as slug for uniqueness
               },
             })
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { orgId: newOrg.id },
-            })
+            try {
+              await prisma.user.update({
+                where: { id: user.id },
+                data: { orgId: newOrg.id },
+              })
+            } catch (err: unknown) {
+              const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : null
+              if (code === 'P2025') {
+                // Record not found; skip
+              } else {
+                throw err
+              }
+            }
           }
         }
         // Note: New users are created by PrismaAdapter, handled in createUser event
@@ -358,10 +374,15 @@ export const authOptions: NextAuthOptions = {
               slug: `org-${userId}`,
             },
           })
-          await prisma.user.update({
-            where: { id: userId },
-            data: { orgId: newOrg.id },
-          })
+          try {
+            await prisma.user.update({
+              where: { id: userId },
+              data: { orgId: newOrg.id },
+            })
+          } catch (err: unknown) {
+            const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : null
+            if (code !== 'P2025') throw err
+          }
         }
       }
     },

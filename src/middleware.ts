@@ -19,10 +19,11 @@ export function middleware(request: NextRequest) {
   const stagingAccess = request.cookies.get('staging-access')
   const pathname = request.nextUrl.pathname
   
-  // Allow only staging gate and its API; require gate before /login or /api/auth
+  // Allow staging gate, its API, and auth API (NextAuth needs JSON from /api/auth/*, not redirects)
   const allowedPaths = [
     '/staging-gate',
     '/api/staging-access',
+    '/api/auth',
   ]
   
   const isAllowedPath = allowedPaths.some(path => 
