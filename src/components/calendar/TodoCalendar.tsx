@@ -12,6 +12,7 @@ import { TodoCheckbox } from '@/components/todos/TodoCheckbox'
 import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
 import type { TodoWithRelations } from '@/types'
 import { Avatar } from '@/components/ui/avatar'
+import { isSameCalendarDay } from '@/lib/utils'
 
 type ViewMode = 'day' | 'week' | 'month'
 type FilterMode = 'all' | 'shared' | 'mine'
@@ -137,8 +138,15 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
   const getTodosForDate = (date: Date) => {
     return getFilteredTodos().filter((todo) => {
       if (!todo.dueDate) return false
-      return isSameDay(new Date(todo.dueDate), date)
+      return isSameCalendarDay(todo.dueDate, date)
     })
+  }
+
+  /** Normalize stored due date to local midnight so week/month comparisons use the intended calendar day. */
+  const todoDueAsLocalDate = (due: string | Date | null) => {
+    if (!due) return null
+    const d = typeof due === 'string' ? new Date(due) : due
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
   }
 
   const getTodosForPeriod = () => {
@@ -147,15 +155,13 @@ export function TodoCalendar({ todos, currentUserId }: TodoCalendarProps) {
       return getTodosForDate(currentDate)
     } else if (viewMode === 'week') {
       return filtered.filter((todo) => {
-        if (!todo.dueDate) return false
-        const todoDate = new Date(todo.dueDate)
-        return isSameWeek(todoDate, currentDate, { weekStartsOn: 0 })
+        const local = todoDueAsLocalDate(todo.dueDate)
+        return local != null && isSameWeek(local, currentDate, { weekStartsOn: 0 })
       })
     } else {
       return filtered.filter((todo) => {
-        if (!todo.dueDate) return false
-        const todoDate = new Date(todo.dueDate)
-        return isSameMonth(todoDate, currentDate)
+        const local = todoDueAsLocalDate(todo.dueDate)
+        return local != null && isSameMonth(local, currentDate)
       })
     }
   }

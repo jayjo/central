@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatDueDate } from '@/lib/utils'
 import { isToday, isPast, startOfDay } from 'date-fns'
 import { TodoCheckbox } from '@/components/todos/TodoCheckbox'
 import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
@@ -39,11 +39,15 @@ function TodoCard({
   currentUserId?: string
   getTodoUrl: (id: string) => string
 }) {
+  const d = todo.dueDate ? new Date(todo.dueDate) : null
+  const dueLocal = d
+    ? new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
+    : null
   const isPastDue =
-    todo.dueDate &&
+    dueLocal &&
     todo.status !== 'COMPLETED' &&
-    isPast(startOfDay(new Date(todo.dueDate))) &&
-    !isToday(startOfDay(new Date(todo.dueDate)))
+    isPast(dueLocal) &&
+    !isToday(dueLocal)
 
   return (
     <Card
@@ -81,7 +85,7 @@ function TodoCard({
                   className={`text-xs mt-1 ${isPastDue ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}
                 >
                   {todo.dueDate
-                    ? formatDate(new Date(todo.dueDate))
+                    ? formatDueDate(todo.dueDate)
                     : formatDate(todo.updatedAt)}
                   {isPastDue && ' • Overdue'}
                   {todo._count && todo._count.messages > 0 && (

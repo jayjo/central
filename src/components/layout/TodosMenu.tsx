@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { X, Plus, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatDueDate } from '@/lib/utils'
 import { isToday, isPast, isFuture, startOfDay } from 'date-fns'
 import { TodoCheckbox } from '@/components/todos/TodoCheckbox'
 import { Kbd } from '@/components/ui/kbd'
@@ -167,18 +167,16 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId, highlightedTo
       if (todo.status === 'COMPLETED') {
         completed.push(todo)
       } else if (todo.dueDate) {
-        const dueDate = startOfDay(new Date(todo.dueDate))
+        const d = new Date(todo.dueDate)
+        const dueDate = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
         if (isToday(dueDate) || isPast(dueDate)) {
-          // Past items go to Today (but styled as overdue)
           today.push(todo)
         } else if (isFuture(dueDate)) {
           upcoming.push(todo)
         } else {
-          // Today
           today.push(todo)
         }
       } else {
-        // No due date goes to upcoming
         upcoming.push(todo)
       }
     })
@@ -221,11 +219,12 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId, highlightedTo
   }
 
   const renderTodo = (todo: Todo) => {
-    // Check if todo is past due (past but not today)
-    const isPastDue = todo.dueDate && 
-      todo.status === 'OPEN' && 
-      isPast(startOfDay(new Date(todo.dueDate))) &&
-      !isToday(startOfDay(new Date(todo.dueDate)))
+    const d = todo.dueDate ? new Date(todo.dueDate) : null
+    const dueLocal = d ? new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0) : null
+    const isPastDue = dueLocal &&
+      todo.status === 'OPEN' &&
+      isPast(dueLocal) &&
+      !isToday(dueLocal)
 
     const isHighlighted = highlightedTodoId === todo.id
     
@@ -266,7 +265,7 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId, highlightedTo
                     {todo.title}
                   </h3>
                   <p className={`text-xs mt-1 ${isPastDue ? 'text-red-600 font-medium' : 'text-muted-foreground'}`}>
-                    {todo.dueDate ? formatDate(new Date(todo.dueDate)) : formatDate(todo.updatedAt)}
+                    {todo.dueDate ? formatDueDate(todo.dueDate) : formatDate(todo.updatedAt)}
                     {isPastDue && ' • Overdue'}
                     {todo._count.messages > 0 && (
                       <> • {todo._count.messages} message(s)</>

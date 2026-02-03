@@ -130,12 +130,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Title required' }, { status: 400 })
   }
 
-  // Parse date string (YYYY-MM-DD) to avoid timezone issues
-  // Create date at local midnight instead of UTC midnight
+  // Parse date string (YYYY-MM-DD) as noon UTC so the calendar day is correct in all timezones
+  // (midnight UTC would show as previous day in western timezones)
   let parsedDueDate: Date | null = null
-  if (dueDate) {
-    // Use the same approach as in the PATCH route - append T00:00:00 to ensure local midnight
-    parsedDueDate = new Date(dueDate + 'T00:00:00')
+  if (dueDate && typeof dueDate === 'string') {
+    const match = dueDate.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (match) {
+      const [, y, m, d] = match
+      parsedDueDate = new Date(Date.UTC(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), 12, 0, 0, 0))
+    } else {
+      parsedDueDate = new Date(dueDate)
+    }
   }
 
   const todo = await prisma.todo.create({

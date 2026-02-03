@@ -1,11 +1,12 @@
 'use client'
 
-import { format, isToday, addDays, startOfDay, isSameDay } from 'date-fns'
+import { format, isToday, addDays, startOfDay } from 'date-fns'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { TodoCheckbox } from '@/components/todos/TodoCheckbox'
 import { useOrgSlug } from '@/components/layout/OrgSlugProvider'
 import { Avatar } from '@/components/ui/avatar'
+import { isSameCalendarDay } from '@/lib/utils'
 
 interface Todo {
   id: string
@@ -46,7 +47,7 @@ export function MobileWeekView({ todos, currentUserId }: MobileWeekViewProps) {
   }
 
   const getTodosForDay = (date: Date) => {
-    return todos.filter((todo) => todo.dueDate && isSameDay(new Date(todo.dueDate), date))
+    return todos.filter((todo) => todo.dueDate && isSameCalendarDay(todo.dueDate, date))
   }
 
   return (

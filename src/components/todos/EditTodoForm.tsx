@@ -30,34 +30,14 @@ interface EditTodoFormProps {
   onSuccess: () => void
 }
 
-// Helper function to extract date in YYYY-MM-DD format without timezone conversion
-function getLocalDateString(dateString: string | null): string {
-  if (!dateString) return ''
-  
-  // If it's already in YYYY-MM-DD format, return it
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-    return dateString
-  }
-  
-  // If it's an ISO string, extract the date part before 'T'
-  if (dateString.includes('T')) {
-    return dateString.split('T')[0]
-  }
-  
-  // Otherwise, parse as Date and use local date components
-  const date = new Date(dateString)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+import { dateToInputValue } from '@/lib/utils'
 
 export function EditTodoForm({ todo, onCancel, onSuccess }: EditTodoFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState(todo.title)
   const [description, setDescription] = useState(todo.description || '')
   const [priority, setPriority] = useState<string>(todo.priority || '')
-  const [dueDate, setDueDate] = useState(getLocalDateString(todo.dueDate))
+  const [dueDate, setDueDate] = useState(dateToInputValue(todo.dueDate))
   const [visibility, setVisibility] = useState<string>(todo.visibility)
   const [loading, setLoading] = useState(false)
   
@@ -66,7 +46,7 @@ export function EditTodoForm({ todo, onCancel, onSuccess }: EditTodoFormProps) {
     title !== todo.title ||
     description !== (todo.description || '') ||
     priority !== (todo.priority || '') ||
-    dueDate !== getLocalDateString(todo.dueDate) ||
+    dueDate !== dateToInputValue(todo.dueDate) ||
     visibility !== todo.visibility
 
   // Warn before navigation if there are unsaved changes

@@ -136,16 +136,13 @@ export async function PATCH(
         ...(dueDate !== undefined && {
           dueDate: dueDate
             ? (() => {
-                // Parse date string (YYYY-MM-DD) to avoid timezone issues
-                const dateMatch = dueDate.match(/^(\d{4})-(\d{2})-(\d{2})/)
+                // Parse date string (YYYY-MM-DD) as noon UTC so the calendar day is correct in all timezones
+                const dateMatch = String(dueDate).match(/^(\d{4})-(\d{2})-(\d{2})/)
                 if (dateMatch) {
                   const [, year, month, day] = dateMatch
-                  // Create date in local timezone at midnight
-                  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 0, 0, 0, 0)
-                } else {
-                  // Fallback to regular Date parsing if format is different
-                  return new Date(dueDate)
+                  return new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), 12, 0, 0, 0))
                 }
+                return new Date(dueDate)
               })()
             : null,
         }),

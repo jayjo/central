@@ -21,16 +21,18 @@ if (typeof window === 'undefined') {
 
 export async function getTodayMessage() {
   try {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    // Use UTC date range so "today" is consistent across servers (e.g. Vercel UTC)
+    // and matches messages stored as UTC midnight by import/seed
+    const now = new Date()
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0))
+    const tomorrowStart = new Date(todayStart)
+    tomorrowStart.setUTCDate(tomorrowStart.getUTCDate() + 1)
 
-    const message = await prisma.motivationalMessage.findFirst({
+    let message = await prisma.motivationalMessage.findFirst({
       where: {
         date: {
-          gte: today,
-          lt: tomorrow,
+          gte: todayStart,
+          lt: tomorrowStart,
         },
         active: true,
       },
@@ -38,6 +40,14 @@ export async function getTodayMessage() {
         createdAt: 'desc',
       },
     })
+
+    // Fallback: if no message for today (e.g. table empty or no match), show most recent active message
+    if (!message) {
+      message = await prisma.motivationalMessage.findFirst({
+        where: { active: true },
+        orderBy: { date: 'desc' },
+      })
+    }
 
     return message ? {
       message: message.message,

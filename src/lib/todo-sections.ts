@@ -15,6 +15,13 @@ export interface TodoForSection {
   [key: string]: unknown
 }
 
+/** Normalize stored due date (UTC) to local midnight so today/upcoming comparison is correct. */
+function dueAsLocalDate(due: Date | string | null): Date | null {
+  if (!due) return null
+  const d = typeof due === 'string' ? new Date(due) : due
+  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
+}
+
 export function organizeTodosBySections(todos: TodoForSection[]): {
   today: TodoForSection[]
   upcoming: TodoForSection[]
@@ -29,7 +36,7 @@ export function organizeTodosBySections(todos: TodoForSection[]): {
     if (todo.status === 'COMPLETED') {
       completed.push(todo)
     } else if (todo.dueDate) {
-      const dueDate = startOfDay(new Date(todo.dueDate))
+      const dueDate = dueAsLocalDate(todo.dueDate) ?? now
       if (isToday(dueDate) || isPast(dueDate)) {
         today.push(todo)
       } else if (isFuture(dueDate)) {

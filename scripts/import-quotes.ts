@@ -74,9 +74,9 @@ async function importQuotes() {
 
     console.log(`Found ${records.length} quotes to import`)
 
-    // Get the current date
-    const startDate = new Date()
-    startDate.setHours(0, 0, 0, 0)
+    // Use UTC midnight so "today" matches getTodayMessage() (which uses UTC date range)
+    const now = new Date()
+    const startDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0))
 
     let imported = 0
     let skipped = 0
@@ -84,7 +84,7 @@ async function importQuotes() {
     for (let i = 0; i < records.length; i++) {
       const record = records[i]
       const quoteDate = new Date(startDate)
-      quoteDate.setDate(startDate.getDate() + i)
+      quoteDate.setUTCDate(startDate.getUTCDate() + i)
 
       try {
         // Check if a message already exists for this date

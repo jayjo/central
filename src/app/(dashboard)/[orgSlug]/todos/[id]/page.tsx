@@ -3,19 +3,11 @@ import { getOrgIdFromSlug } from '@/lib/routing'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDate, formatDateTime, formatDueDate, dateToInputValue } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { MessageForm } from '@/components/todos/MessageForm'
 import { TodoStatusButton } from '@/components/todos/TodoStatusButton'
 import { EditTodoButton } from '@/components/todos/EditTodoButton'
-
-// Helper function to get local date string in YYYY-MM-DD format
-function getLocalDateString(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 export default async function OrgSlugTodoDetailPage({
   params,
@@ -122,7 +114,7 @@ export default async function OrgSlugTodoDetailPage({
           {todo.dueDate && (
             <>
               <span>•</span>
-              <span>Due: {formatDate(todo.dueDate)}</span>
+              <span>Due: {formatDueDate(todo.dueDate)}</span>
             </>
           )}
         </div>
@@ -146,7 +138,7 @@ export default async function OrgSlugTodoDetailPage({
             title: todo.title,
             description: todo.description,
             priority: todo.priority,
-            dueDate: todo.dueDate ? getLocalDateString(new Date(todo.dueDate)) : null,
+            dueDate: todo.dueDate ? dateToInputValue(todo.dueDate) : null,
             visibility: todo.visibility,
             status: todo.status,
           }} 
