@@ -110,8 +110,9 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+        // Case-insensitive email lookup so "User@Example.com" and "user@example.com" both work
+        const user = await prisma.user.findFirst({
+          where: { email: { equals: credentials.email, mode: 'insensitive' } },
         })
 
         if (!user || !user.password) {
@@ -408,11 +409,44 @@ export const authOptions: NextAuthOptions = {
   },
 }
 
+/** Only active when NODE_ENV=development and BYPASS_AUTH_LOCAL=true. Use to skip login on local. */
+function isLocalAuthBypassEnabled(): boolean {
+  return process.env.NODE_ENV === 'development' && process.env.BYPASS_AUTH_LOCAL === 'true'
+}
+
+/** When bypass is on, load a dev user to act as. Uses DEV_BYPASS_EMAIL if set, otherwise first user. */
+async function getBypassSession() {
+  const email = process.env.DEV_BYPASS_EMAIL?.trim()
+  const user = email
+    ? await prisma.user.findFirst({
+        where: { email: { equals: email, mode: 'insensitive' } },
+        include: { org: true },
+      })
+    : await prisma.user.findFirst({ orderBy: { createdAt: 'asc' }, include: { org: true } })
+  if (!user) return null
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      image: user.image,
+    },
+    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  }
+}
+
 export async function getCurrentUser() {
+  if (isLocalAuthBypassEnabled()) {
+    const session = await getBypassSession()
+    return session?.user ?? null
+  }
   const session = await getServerSession(authOptions)
   return session?.user
 }
 
 export async function getSession() {
+  if (isLocalAuthBypassEnabled()) {
+    return await getBypassSession()
+  }
   return await getServerSession(authOptions)
 }

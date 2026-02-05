@@ -1,10 +1,13 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getTodayMessage } from '@/lib/db'
 import { getOrgIdFromSlug } from '@/lib/routing'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { TopBar } from '@/components/layout/TopBar'
 import { QuickLauncherProvider } from '@/components/quick-launcher/QuickLauncherProvider'
 import { OrgSlugProvider } from '@/components/layout/OrgSlugProvider'
+import { isToday, isPast, isFuture, startOfDay } from 'date-fns'
 
 export default async function OrgSlugLayout({
   children,
@@ -114,12 +117,51 @@ export default async function OrgSlugLayout({
     },
   })
 
+    // Badge counts for sidebar: today (due today or past), upcoming (due future), someday (no due date)
+    const now = startOfDay(new Date())
+    let todayCount = 0
+    let upcomingCount = 0
+    let somedayCount = 0
+    recentTodos.forEach((todo) => {
+      if (todo.status === 'COMPLETED') return
+      if (!todo.dueDate) {
+        somedayCount++
+        return
+      }
+      const d = new Date(todo.dueDate)
+      const dueLocal = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0)
+      if (isToday(dueLocal) || isPast(dueLocal)) todayCount++
+      else if (isFuture(dueLocal)) upcomingCount++
+      else todayCount++
+    })
+
+    let message = null
+    try {
+      message = await getTodayMessage()
+    } catch {
+      message = null
+    }
+
+    const orgName = user.org?.name ?? params.orgSlug ?? 'Nuclio'
+
     return (
       <QuickLauncherProvider>
         <OrgSlugProvider orgSlug={params.orgSlug}>
           <div className="flex h-screen bg-background overflow-hidden">
-            <Sidebar userEmail={session.user?.email} todos={recentTodos} currentUserId={user.id} />
-            <main className="flex-1 overflow-y-auto">{children}</main>
+            <Sidebar
+              userEmail={session.user?.email}
+              todos={recentTodos}
+              currentUserId={user.id}
+              message={message}
+              zipCode={user.zipCode}
+              todayCount={todayCount}
+              upcomingCount={upcomingCount}
+              somedayCount={somedayCount}
+            />
+            <div className="flex flex-col flex-1 min-w-0">
+              <TopBar orgName={orgName} />
+              <main className="flex-1 overflow-y-auto">{children}</main>
+            </div>
           </div>
         </OrgSlugProvider>
       </QuickLauncherProvider>

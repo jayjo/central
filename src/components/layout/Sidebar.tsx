@@ -2,17 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { CheckSquare, Calendar, Settings, MessageSquare, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { NavIcon } from './NavIcon'
 import { TodosMenu } from './TodosMenu'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Kbd } from '@/components/ui/kbd'
 import { useCalendarUrl, useMyTodosUrl, useSettingsUrl, useOrgSlug } from '@/components/layout/OrgSlugProvider'
 import { FeedbackModal } from '@/components/feedback/FeedbackModal'
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal'
+import { WeatherCard } from '@/components/dashboard/WeatherCard'
+import { MotivationalCard } from '@/components/dashboard/MotivationalCard'
+
+interface MotivationalMessage {
+  message: string
+  author: string | null
+  category: string | null
+}
 
 interface Todo {
   id: string
@@ -29,17 +34,30 @@ interface Todo {
     name: string | null
     image: string | null
   }
-  sharedWith: Array<{
-    id: string
-  }>
-  _count: {
-    messages: number
-  }
+  sharedWith: Array<{ id: string }>
+  _count: { messages: number }
 }
 
-export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: string; todos?: Todo[]; currentUserId?: string }) {
+export function Sidebar({
+  userEmail,
+  todos,
+  currentUserId,
+  message,
+  zipCode,
+  todayCount = 0,
+  upcomingCount = 0,
+  somedayCount = 0,
+}: {
+  userEmail?: string
+  todos?: Todo[]
+  currentUserId?: string
+  message?: MotivationalMessage | null
+  zipCode?: string | null
+  todayCount?: number
+  upcomingCount?: number
+  somedayCount?: number
+}) {
   const pathname = usePathname()
-  const router = useRouter()
   const [showTodosMenu, setShowTodosMenu] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [showOnboardingModal, setShowOnboardingModal] = useState(false)
@@ -48,235 +66,153 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
   const myTodosUrl = useMyTodosUrl()
   const settingsUrl = useSettingsUrl()
 
-  useEffect(() => {
-    const handleOpenTodosMenu = () => {
-      setShowTodosMenu(true)
-    }
+  const isCalendar = pathname === calendarUrl || pathname === (orgSlug ? `/${orgSlug}` : '/')
+  const isMyTodos = pathname === myTodosUrl
+  const isSettings = pathname === settingsUrl || pathname === '/settings'
 
-    // Also check URL for highlight parameter and open drawer if present
+  useEffect(() => {
+    const handleOpenTodosMenu = () => setShowTodosMenu(true)
     const checkUrlForHighlight = () => {
-      if (typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search)
-        if (params.get('highlight')) {
-          setShowTodosMenu(true)
-        }
+      if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('highlight')) {
+        setShowTodosMenu(true)
       }
     }
-
     window.addEventListener('openTodosMenu', handleOpenTodosMenu)
     checkUrlForHighlight()
-    
-    // Listen for navigation events to check for highlight
-    const handlePopState = () => {
-      checkUrlForHighlight()
-    }
-    window.addEventListener('popstate', handlePopState)
-    
+    window.addEventListener('popstate', checkUrlForHighlight)
     return () => {
       window.removeEventListener('openTodosMenu', handleOpenTodosMenu)
-      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('popstate', checkUrlForHighlight)
     }
   }, [])
 
-  // Check URL for highlight parameter when pathname changes
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      if (params.get('highlight')) {
-        setShowTodosMenu(true)
-      }
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('highlight')) {
+      setShowTodosMenu(true)
     }
   }, [pathname])
 
   return (
     <>
-      <div className="flex flex-col h-screen w-16 border-r bg-background">
-        {/* Logo */}
-        <div className="p-2 border-b">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href={calendarUrl}>
-                  <Button variant="ghost" className="w-full justify-center p-2 h-12">
-                    <Image
-                      src="/images/nuclio-logo.png"
-                      alt="Nuclio"
-                      width={32}
-                      height={32}
-                      className="object-contain"
-                      priority
-                    />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="flex items-center gap-2">
-                  <span>Nuclio</span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <div className="flex flex-col h-screen w-60 border-r bg-muted/50 shrink-0 overflow-y-auto">
+        {/* Nav items: default state from Figma node 2088-699 — icon/text #B0B0B0, badge #E8E8E8 / #4B4B4B */}
+        <nav className="p-3 space-y-0.5 border-b">
+          <Link
+            href={myTodosUrl}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              isMyTodos
+                ? 'bg-white text-foreground shadow-sm'
+                : 'text-[#B0B0B0] hover:bg-accent hover:text-foreground'
+            )}
+          >
+            <NavIcon icon="star" />
+            <span>Today</span>
+            {todayCount > 0 && (
+              <span
+                className={cn(
+                  'ml-auto text-xs px-2 py-0.5 rounded-md min-w-[1.25rem] text-center',
+                  isMyTodos ? 'bg-muted text-foreground' : 'bg-[#E8E8E8] text-[#4B4B4B]'
+                )}
+              >
+                {todayCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href={myTodosUrl}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              'text-[#B0B0B0] hover:bg-accent hover:text-foreground'
+            )}
+          >
+            <NavIcon icon="clock-upcoming" />
+            <span>Upcoming</span>
+            {upcomingCount > 0 && (
+              <span className="ml-auto text-xs bg-[#E8E8E8] text-[#4B4B4B] px-2 py-0.5 rounded-md min-w-[1.25rem] text-center">
+                {upcomingCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href={myTodosUrl}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              'text-[#B0B0B0] hover:bg-accent hover:text-foreground'
+            )}
+          >
+            <NavIcon icon="someday" />
+            <span>Someday</span>
+            {somedayCount > 0 && (
+              <span className="ml-auto text-xs bg-[#E8E8E8] text-[#4B4B4B] px-2 py-0.5 rounded-md min-w-[1.25rem] text-center">
+                {somedayCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href={calendarUrl}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              isCalendar
+                ? 'bg-white text-foreground shadow-sm'
+                : 'text-[#B0B0B0] hover:bg-accent hover:text-foreground'
+            )}
+          >
+            <NavIcon icon="calendar" />
+            <span>Calendar</span>
+          </Link>
+        </nav>
+
+        {/* Weather & Inspiration */}
+        <div className="p-3 space-y-3 flex-1 min-h-0">
+          <WeatherCard zipCode={zipCode} />
+          <MotivationalCard message={message ?? null} />
         </div>
 
-        {/* Navigation */}
-        <TooltipProvider>
-          <nav className="flex-1 p-2 space-y-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href={calendarUrl} data-no-warn="true">
-                  <Button
-                    variant={pathname === calendarUrl || pathname === '/' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    className={cn(
-                      'w-full',
-                      (pathname === calendarUrl || pathname === '/') && 'bg-accent'
-                    )}
-                  >
-                    <Calendar className="h-5 w-5" />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="flex items-center gap-2">
-                  <span>Calendar</span>
-                  <Kbd>
-                    <span>C</span>
-                  </Kbd>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-            {/* Mobile: Todos links to my-todos page (Today/Upcoming/Completed as full page) */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link
-                  href={myTodosUrl}
-                  className={cn(
-                    'md:hidden w-full flex items-center justify-center',
-                    pathname === myTodosUrl && 'bg-accent rounded-md'
-                  )}
-                  data-no-warn="true"
-                >
-                  <Button
-                    variant={pathname === myTodosUrl ? 'secondary' : 'ghost'}
-                    size="icon"
-                    className="w-full"
-                  >
-                    <CheckSquare className="h-5 w-5" />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="flex items-center gap-2">
-                  <span>Todos</span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-            {/* Desktop: Todos opens the drawer */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={pathname === myTodosUrl ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className={cn(
-                    'hidden md:flex w-full',
-                    pathname === myTodosUrl && 'bg-accent'
-                  )}
-                  onClick={() => setShowTodosMenu(!showTodosMenu)}
-                >
-                  <CheckSquare className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="flex items-center gap-2">
-                  <span>Todos</span>
-                  <Kbd>
-                    <span>T</span>
-                  </Kbd>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </nav>
-        </TooltipProvider>
-
-        {/* Help & Feedback */}
-        <div className="p-2 space-y-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-full"
-                  onClick={() => setShowOnboardingModal(true)}
-                >
-                  <HelpCircle className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="flex items-center gap-2">
-                  <span>Help & Onboarding</span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-full"
-                  onClick={() => setShowFeedbackModal(true)}
-                >
-                  <MessageSquare className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="flex items-center gap-2">
-                  <span>Send Feedback</span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-
-        {/* Settings */}
-        <div className="p-2 border-t">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  asChild
-                  variant={pathname === settingsUrl || pathname === '/settings' ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className={cn(
-                    'w-full',
-                    (pathname === settingsUrl || pathname === '/settings') && 'bg-accent'
-                  )}
-                >
-                  <Link href={settingsUrl}>
-                    <Settings className="h-5 w-5" />
-                  </Link>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="flex items-center gap-2">
-                  <span>Settings</span>
-                  <Kbd>
-                    <span>S</span>
-                  </Kbd>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        {/* Help, Feedback, Settings — same nav-item default state (node): #B0B0B0, no badge */}
+        <div className="p-3 space-y-0.5 border-t">
+          <button
+            type="button"
+            onClick={() => setShowOnboardingModal(true)}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              'text-[#B0B0B0] hover:bg-accent hover:text-foreground'
+            )}
+          >
+            <NavIcon icon="help" />
+            <span>Help & Onboarding</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowFeedbackModal(true)}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              'text-[#B0B0B0] hover:bg-accent hover:text-foreground'
+            )}
+          >
+            <NavIcon icon="chat-circle" />
+            <span>Leave Feedback</span>
+          </button>
+          <Link
+            href={settingsUrl}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              isSettings
+                ? 'bg-white text-foreground shadow-sm'
+                : 'text-[#B0B0B0] hover:bg-accent hover:text-foreground'
+            )}
+          >
+            <NavIcon icon="settings" />
+            <span>Settings</span>
+          </Link>
         </div>
       </div>
 
-      {/* Todos Menu drawer - desktop only; on mobile Todos links to my-todos page */}
+      {/* Todos drawer - desktop only */}
       {todos && (
         <div className="hidden md:block">
-          <TodosMenu 
-            todos={todos} 
+          <TodosMenu
+            todos={todos}
             isOpen={showTodosMenu}
             onClose={() => setShowTodosMenu(false)}
             currentUserId={currentUserId}
@@ -285,19 +221,8 @@ export function Sidebar({ userEmail, todos, currentUserId }: { userEmail?: strin
         </div>
       )}
 
-      {/* Feedback Modal */}
-      {/* Onboarding Modal */}
-      <OnboardingModal
-        isOpen={showOnboardingModal}
-        onClose={() => setShowOnboardingModal(false)}
-      />
-      
-      {/* Feedback Modal */}
-      <FeedbackModal
-        isOpen={showFeedbackModal}
-        onClose={() => setShowFeedbackModal(false)}
-        userEmail={userEmail}
-      />
+      <OnboardingModal isOpen={showOnboardingModal} onClose={() => setShowOnboardingModal(false)} />
+      <FeedbackModal isOpen={showFeedbackModal} onClose={() => setShowFeedbackModal(false)} userEmail={userEmail} />
     </>
   )
 }

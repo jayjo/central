@@ -20,6 +20,18 @@ NEXTAUTH_URL=https://your-app-name.vercel.app
 NEXTAUTH_SECRET=<generate-with-openssl-rand-base64-32>
 ```
 
+**Local development (magic links):** For sign-in links in email to work on your machine, set:
+```
+NEXTAUTH_URL=http://localhost:3000
+```
+Use your actual dev port if different (e.g. `http://localhost:3001`). Without this, the link in the email may point to the wrong host and login will fail.
+
+**Local development (bypass auth):** To skip login entirely on your machine (e.g. when testing UI without magic link/password):
+```
+BYPASS_AUTH_LOCAL=true
+```
+Only works when `NODE_ENV=development`. The app will act as an existing user: set `DEV_BYPASS_EMAIL=you@example.com` to act as that account, or leave it unset to act as the first user in the DB. Remove or set to `false` when you need to test real auth.
+
 **Generate NEXTAUTH_SECRET:**
 ```bash
 openssl rand -base64 32

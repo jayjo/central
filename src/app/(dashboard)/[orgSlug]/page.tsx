@@ -1,7 +1,4 @@
-import { WeatherCard } from '@/components/dashboard/WeatherCard'
-import { MotivationalCard } from '@/components/dashboard/MotivationalCard'
 import { MobileWeekView } from '@/components/dashboard/MobileWeekView'
-import { getTodayMessage } from '@/lib/db'
 import { prisma } from '@/lib/db'
 import { TodoCalendar } from '@/components/calendar/TodoCalendar'
 import { getOrgIdFromSlug } from '@/lib/routing'
@@ -36,13 +33,6 @@ export default async function OrgSlugDashboardPage({
   // Verify user belongs to this org
   if (user.orgId !== orgId) {
     redirect('/')
-  }
-
-  let message = null
-  try {
-    message = await getTodayMessage()
-  } catch (error) {
-    console.error('Error fetching message:', error)
   }
 
   // Get all todos with due dates for the calendar, scoped to this org
@@ -120,12 +110,6 @@ export default async function OrgSlugDashboardPage({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header with Weather and Quote - hidden on mobile */}
-      <div className="hidden md:grid grid-cols-2 gap-4 p-6 border-b">
-        <WeatherCard zipCode={user?.zipCode} />
-        <MotivationalCard message={message} />
-      </div>
-
       {/* Mobile: scrolling 7-day list with date headers */}
       <div className="flex-1 overflow-y-auto p-6 bg-[#f8f8f8] md:hidden">
         <MobileWeekView todos={todos} currentUserId={user.id} />

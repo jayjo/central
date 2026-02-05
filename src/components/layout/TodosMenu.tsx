@@ -292,7 +292,7 @@ export function TodosMenu({ todos, isOpen, onClose, currentUserId, highlightedTo
     <TooltipProvider delayDuration={300}>
       {/* Drawer */}
       <div
-        className={`fixed ${isOpen ? 'left-[72px]' : 'left-0'} top-[8px] h-[calc(100vh-16px)] w-96 bg-background border-r shadow-xl z-50 flex flex-col transition-all duration-300 ease-in-out rounded-2xl ${
+        className={`fixed ${isOpen ? 'left-60' : 'left-0'} top-[8px] h-[calc(100vh-16px)] w-96 bg-background border-r shadow-xl z-50 flex flex-col transition-all duration-300 ease-in-out rounded-2xl ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
